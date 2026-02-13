@@ -3,44 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Điều phối V11.0 - Nền Trắng Tươi</title>
+    <title>Điều phối V11.2 - Cộng Hưởng Gắt</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background: #ffffff; overflow: hidden; }
-        
-        /* ĐĂNG NHẬP */
-        #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f1f2f6; display: flex; align-items: center; justify-content: center; z-index: 10000; }
+        #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f8f9fa; display: flex; align-items: center; justify-content: center; z-index: 10000; }
         .login-box { background: #ffffff; padding: 25px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 85%; max-width: 320px; text-align: center; border: 2px solid #ff4757; }
         .login-box h2 { color: #ff4757; margin-bottom: 20px; }
         .login-box input { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #ced4da; background: #f8f9fa; color: #2d3436; font-size: 16px; box-sizing: border-box; }
         .login-box button { width: 100%; padding: 14px; background: #ff4757; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
 
-        /* GIAO DIỆN CHÍNH */
         #main-app { display: none; height: 100vh; flex-direction: column; }
         #map { flex-grow: 1; width: 100%; background: #fdfdfd; }
-        #sidebar { width: 100%; max-height: 50%; background: #ffffff; color: #2d3436; overflow-y: auto; z-index: 1000; padding: 12px; box-sizing: border-box; border-top: 2px solid #ff4757; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); }
+        #sidebar { width: 100%; max-height: 50%; background: #ffffff; color: #2d3436; overflow-y: auto; z-index: 1000; padding: 12px; box-sizing: border-box; border-top: 2px solid #ff4757; }
         
         @media (min-width: 768px) { #main-app { flex-direction: row; } #sidebar { width: 400px; max-height: 100%; border-top: none; border-right: 2px solid #ff4757; } }
 
         .card { background: #fdfcf0; border-radius: 10px; padding: 10px; margin-bottom: 10px; border: 1px solid #e9e5c9; }
         .card-title { font-weight: bold; color: #ff4757; margin-bottom: 6px; font-size: 11px; border-bottom: 1px solid #e9e5c9; padding-bottom: 4px; text-transform: uppercase; }
-        
         input, select, button.action-btn { width: 100%; padding: 10px; margin-top: 5px; border-radius: 8px; border: 1px solid #ced4da; font-size: 14px; box-sizing: border-box; }
         .btn-refresh { background: #2ecc71; color: white; font-weight: bold; border: none; }
         .btn-search { background: #3498db; color: white; font-weight: bold; border: none; }
 
         #zoom-info { position: absolute; top: 10px; right: 10px; z-index: 1000; background: rgba(255,255,255,0.9); color: #ff4757; padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; border: 1px solid #ff4757; }
         .stats-box { background: #ffffff; padding: 10px; border-radius: 8px; margin-top: 8px; border-left: 5px solid #ff4757; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .dealer-row { display: grid; grid-template-columns: 1fr 80px 50px; gap: 5px; padding: 5px 0; border-bottom: 1px solid #eee; font-size: 11px; }
         .sales-tag { color: #d63031; text-align: right; font-weight: bold; }
         
-        /* Hiệu ứng nhiệt đậm đặc trên nền sáng */
-        .leaflet-heatmap-layer { pointer-events: none !important; opacity: 0.85 !important; mix-blend-mode: multiply; }
+        /* HIỆU ỨNG CỘNG HƯỞNG GẮT */
+        .leaflet-heatmap-layer { pointer-events: none !important; opacity: 0.95 !important; mix-blend-mode: multiply; }
     </style>
 </head>
 <body>
 
-<div id="login-overlay"><div class="login-box"><h2>HỆ THỐNG V11.0</h2><input type="text" id="username" placeholder="User"><input type="password" id="password" placeholder="Pass"><button onclick="checkLogin()">ĐĂNG NHẬP</button></div></div>
+<div id="login-overlay"><div class="login-box"><h2>HỆ THỐNG V11.2</h2><input type="text" id="username" placeholder="User"><input type="password" id="password" placeholder="Pass"><button onclick="checkLogin()">ĐĂNG NHẬP</button></div></div>
 
 <div id="main-app">
     <div id="map"></div>
@@ -59,7 +54,6 @@
 <script>
     function checkLogin() { if (document.getElementById('username').value === 'admin' && document.getElementById('password').value === '123456') { document.getElementById('login-overlay').style.display = 'none'; document.getElementById('main-app').style.display = 'flex'; map.invalidateSize(); loadDataOnline(); } }
 
-    // SỬ DỤNG BẢN ĐỒ NỀN TRẮNG PHA VÀNG NHẠT (Positron with slight yellow tint)
     const map = L.map('map', { zoomSnap: 0.1, zoomControl: false }).setView([21.02, 105.83], 12);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
 
@@ -84,29 +78,24 @@
                     dealers.push({ latlng: L.latLng(lat, lng), ds, ten: col[1] });
                     
                     if (ds > 0) {
-                        let intensity = 0;
-                        if (ds >= 2000000000) intensity = 1.0;
-                        else if (ds >= 1200000000) intensity = 0.8;
-                        else if (ds >= 800000000) intensity = 0.6;
-                        else if (ds >= 400000000) intensity = 0.4;
-                        else if (ds >= 200000000) intensity = 0.2;
-                        else intensity = 0.1;
+                        // TĂNG CƯỜNG ĐỘ CỘNG HƯỞNG: Càng nhiều nhà gần nhau màu càng sẫm nhanh
+                        let intensity = (ds >= 2000000000) ? 1.5 : (ds / 600000000);
                         hp.push([lat, lng, intensity]);
                     }
                 }
             });
 
             if (heatLayer) heatLayerGroup.removeLayer(heatLayer);
-            // GRADIENT PHÂN CẤP ĐẬM ĐẶC - TRÊN NỀN TRẮNG
+            // GIẢM BLUR ĐỂ LÕI MÀU GẮT VÀ CỘNG HƯỞNG TỐT HƠN
             heatLayer = L.heatLayer(hp, { 
-                radius: 85, blur: 25, max: 0.8,
+                radius: 75, blur: 20, max: 0.7,
                 gradient: { 
-                    0.1: '#2ecc71', // Xanh lá (<200tr)
-                    0.2: '#f1c40f', // Vàng (<400tr)
-                    0.4: '#e67e22', // Cam (<800tr)
-                    0.6: '#e74c3c', // Đỏ (<1.2 tỷ)
-                    0.8: '#800000', // Đỏ đô sẫm (<2 tỷ)
-                    1.0: '#000000'  // Đen đặc quánh (>=2 tỷ)
+                    0.2: '#2ecc71', // Xanh
+                    0.4: '#f1c40f', // Vàng
+                    0.6: '#e67e22', // Cam
+                    0.8: '#e74c3c', // Đỏ tươi
+                    0.9: '#800000', // Đỏ đô sẫm (Cộng hưởng ra màu này)
+                    1.0: '#000000'  // Đen (Vùng cực nóng)
                 } 
             }).addTo(heatLayerGroup);
             updateZoomParams();
@@ -116,8 +105,10 @@
     function updateZoomParams() {
         if (!heatLayer) return;
         const z = map.getZoom(); document.getElementById('zoom-level').innerText = z.toFixed(1);
-        let r = (z >= 13.5) ? 100 : (z >= 12 ? 80 : 55);
-        heatLayer.setOptions({ radius: r, blur: (z >= 13 ? 28 : 22) });
+        // ZOOM CÀNG SÂU CÀNG ÉP MÀU ĐẬM
+        let r = (z >= 13.5) ? 95 : (z >= 12 ? 75 : 50);
+        let b = (z >= 13) ? 15 : 20; 
+        heatLayer.setOptions({ radius: r, blur: b });
     }
     map.on('zoomend', updateZoomParams);
 
@@ -156,14 +147,7 @@
         warehouses.forEach(w => {
             const inR = dealers.filter(x => w.latlng.distanceTo(x.latlng) <= w.radius);
             const sum = inR.reduce((a, b) => a + b.ds, 0);
-            d.innerHTML += `
-                <div class="stats-box">
-                    <div style="font-weight:bold; display:flex; justify-content:space-between; color:#2d3436; font-size:13px;">
-                        ${w.name} (${(w.radius/1000).toFixed(1)}km)
-                    </div>
-                    <div style="font-size:11px; color:#636e72;">Đại lý: ${inR.length} | Tổng DS: <b style="color:#d63031">${sum.toLocaleString()}</b></div>
-                    <button style="background:#ff7675; color:white; padding:4px; margin-top:5px; width:100%; border:none; border-radius:4px; font-size:10px;" onclick="deleteWh(${w.id})">XÓA</button>
-                </div>`;
+            d.innerHTML += `<div class="stats-box"><div style="font-weight:bold; color:#2d3436; font-size:13px;">${w.name} (${(w.radius/1000).toFixed(1)}km)</div><div style="font-size:11px; color:#636e72;">Đại lý: ${inR.length} | Tổng DS: <b style="color:#d63031">${sum.toLocaleString()}</b></div><button style="background:#ff7675; color:white; padding:4px; margin-top:5px; width:100%; border:none; border-radius:4px; font-size:10px;" onclick="deleteWh(${w.id})">XÓA</button></div>`;
         });
     }
     function deleteWh(id) { const wh = warehouses.find(w => w.id === id); if (wh) { map.removeLayer(wh.marker); map.removeLayer(wh.circle); warehouses = warehouses.filter(w => w.id !== id); updateStats(); } }
