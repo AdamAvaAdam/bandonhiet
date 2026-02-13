@@ -133,7 +133,7 @@
                 }
             });
             if (heatLayer) heatLayerGroup.removeLayer(heatLayer);
-            heatLayer = L.heatLayer(hp, { radius: 95, blur: 30, max: 1.0, gradient: { 0.2: 'yellow', 0.5: 'red', 0.8: 'black', 1.0: '#5e0000' } });
+            heatLayer = L.heatLayer(hp, { radius: 95, blur: 30, max: 1.0, gradient: { 0.2: '#ff9f43', 0.5: '#ff4757', 0.8: '#b33939', 1.0: '#5e0000' } });
             if (document.getElementById('heatToggle').value === 'on') heatLayer.addTo(heatLayerGroup);
         } catch (e) { alert("Lỗi tải!"); }
     }
@@ -236,4 +236,3 @@
 </script>
 </body>
 </html>
-
