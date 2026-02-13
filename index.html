@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Điều phối V10.2 - Dũng Nguyễn</title>
+    <title>Điều phối V10.3 - Dũng Nguyễn</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background: #1e272e; overflow: hidden; }
@@ -15,25 +15,25 @@
 
         #main-app { display: none; height: 100vh; flex-direction: column; }
         #map { flex-grow: 1; width: 100%; }
-        #sidebar { width: 100%; max-height: 45%; background: #1e272e; color: #ecf0f1; overflow-y: auto; z-index: 1000; padding: 15px; box-sizing: border-box; border-top: 2px solid #ff4757; }
+        #sidebar { width: 100%; max-height: 50%; background: #1e272e; color: #ecf0f1; overflow-y: auto; z-index: 1000; padding: 12px; box-sizing: border-box; border-top: 2px solid #ff4757; }
         
         @media (min-width: 768px) {
             #main-app { flex-direction: row; }
             #sidebar { width: 420px; max-height: 100%; border-top: none; border-right: 2px solid #ff4757; }
         }
 
-        .card { background: #2d3436; border-radius: 10px; padding: 12px; margin-bottom: 12px; border: 1px solid #485460; }
-        .card-title { font-weight: bold; color: #ff4757; margin-bottom: 8px; font-size: 13px; border-bottom: 1px solid #485460; padding-bottom: 5px; text-transform: uppercase; }
+        .card { background: #2d3436; border-radius: 10px; padding: 10px; margin-bottom: 10px; border: 1px solid #485460; }
+        .card-title { font-weight: bold; color: #ff4757; margin-bottom: 6px; font-size: 12px; border-bottom: 1px solid #485460; padding-bottom: 4px; text-transform: uppercase; }
         
-        input, select, button.action-btn { width: 100%; padding: 10px; margin-top: 5px; border-radius: 6px; border: none; font-size: 14px; box-sizing: border-box; }
-        .btn-refresh { background: #2ecc71; color: white; font-weight: bold; }
+        input, select, button.action-btn { width: 100%; padding: 8px; margin-top: 5px; border-radius: 6px; border: none; font-size: 14px; box-sizing: border-box; }
+        .btn-refresh { background: #2ecc71; color: white; font-weight: bold; margin-bottom: 5px; }
         .btn-search { background: #3498db; color: white; font-weight: bold; }
         .btn-clear { background: #7f8c8d; color: white; font-weight: bold; margin-top: 5px; }
 
-        #zoom-info { position: absolute; top: 10px; right: 10px; z-index: 1000; background: rgba(0,0,0,0.8); color: #f1c40f; padding: 5px 12px; border-radius: 15px; font-size: 12px; font-weight: bold; border: 1px solid #ff4757; }
-        .stats-box { background: #34495e; padding: 12px; border-radius: 8px; margin-top: 10px; border-left: 5px solid #ff4757; }
-        .dealer-list { display: none; margin-top: 10px; border-top: 1px solid #555; padding-top: 10px; }
-        .dealer-row { display: grid; grid-template-columns: 1fr 80px 60px; gap: 5px; padding: 6px 0; border-bottom: 1px solid #444; font-size: 12px; align-items: center; }
+        #zoom-info { position: absolute; top: 10px; right: 10px; z-index: 1000; background: rgba(0,0,0,0.8); color: #f1c40f; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; border: 1px solid #ff4757; }
+        .stats-box { background: #34495e; padding: 10px; border-radius: 8px; margin-top: 8px; border-left: 4px solid #ff4757; }
+        .dealer-list { display: none; margin-top: 8px; border-top: 1px solid #555; padding-top: 8px; }
+        .dealer-row { display: grid; grid-template-columns: 1fr 75px 55px; gap: 4px; padding: 4px 0; border-bottom: 1px solid #444; font-size: 11px; align-items: center; }
         .sales-tag { color: #f1c40f; text-align: right; font-weight: bold; }
         .dist-tag { color: #2ecc71; text-align: right; font-weight: bold; }
         
@@ -45,7 +45,7 @@
 
 <div id="login-overlay">
     <div class="login-box">
-        <h2>HỆ THỐNG V10.2</h2>
+        <h2>HỆ THỐNG V10.3</h2>
         <input type="text" id="username" placeholder="Tên đăng nhập">
         <input type="password" id="password" placeholder="Mật khẩu">
         <button onclick="checkLogin()">ĐĂNG NHẬP</button>
@@ -55,39 +55,39 @@
 
 <div id="main-app">
     <div id="map"></div>
-    <div id="zoom-info">ZOOM: <span id="zoom-level">12</span></div>
+    <div id="zoom-info">Z: <span id="zoom-level">12</span></div>
     
     <div id="sidebar">
-        <h3 style="color: #ff4757; text-align: center; margin: 0 0 15px 0;">ĐIỀU PHỐI CHIẾN LƯỢC</h3>
-
-        <div class="card">
-            <div class="card-title">🔄 DỮ LIỆU SHEETS</div>
-            <button class="action-btn btn-refresh" onclick="loadDataOnline()">LÀM MỚI DỮ LIỆU</button>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top:10px;">
-                <select id="pointToggle" onchange="togglePointLayer()"><option value="on">ĐIỂM: BẬT</option><option value="off">ĐIỂM: TẮT</option></select>
-                <select id="heatToggle" onchange="toggleHeatLayer()"><option value="on">NHIỆT: BẬT</option><option value="off">NHIỆT: TẮT</option></select>
-            </div>
-        </div>
-
         <div class="card">
             <div class="card-title">🔍 TÌM KHU VỰC</div>
-            <input type="text" id="areaSearchInput" placeholder="Vd: Quận Hoàng Mai, Hà Nội">
-            <button class="action-btn btn-search" onclick="searchArea()">XEM RANH GIỚI</button>
-            <button class="action-btn btn-clear" onclick="clearHighlight()">XÓA VIỀN</button>
+            <input type="text" id="areaSearchInput" placeholder="Vd: Ninh Bình">
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                <button class="action-btn btn-search" onclick="searchArea()">XEM VIỀN</button>
+                <button class="action-btn btn-clear" onclick="clearHighlight()">XÓA VIỀN</button>
+            </div>
         </div>
         
         <div class="card">
             <div class="card-title">📍 THIẾT LẬP KHO & BÁN KÍNH</div>
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: center;">
-                <select id="pinToggle"><option value="off">XEM</option><option value="on">CẮM GHIM</option></select>
+                <select id="pinToggle"><option value="off">XEM</option><option value="on">CẮM KHO</option></select>
                 <div style="position: relative;">
-                    <input type="number" id="radiusInput" value="3" step="0.5" min="0.1" oninput="updateAllRadius()" style="padding-right: 35px;">
-                    <span style="position: absolute; right: 10px; top: 15px; color: #2d3436; font-size: 12px; font-weight: bold;">KM</span>
+                    <input type="number" id="radiusInput" value="3" step="0.5" min="0.1" oninput="updateAllRadius()" style="padding-right: 30px;">
+                    <span style="position: absolute; right: 8px; top: 13px; color: #2d3436; font-size: 11px; font-weight: bold;">KM</span>
                 </div>
             </div>
         </div>
-        
+
         <div id="warehouse-list"></div>
+
+        <div class="card">
+            <div class="card-title">🔄 DỮ LIỆU (ÍT DÙNG)</div>
+            <button class="action-btn btn-refresh" onclick="loadDataOnline()">LÀM MỚI TỪ SHEETS</button>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <select id="pointToggle" onchange="togglePointLayer()"><option value="on">ĐIỂM: BẬT</option><option value="off">ĐIỂM: TẮT</option></select>
+                <select id="heatToggle" onchange="toggleHeatLayer()"><option value="on">NHIỆT: BẬT</option><option value="off">NHIỆT: TẮT</option></select>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -99,8 +99,7 @@
         if (document.getElementById('username').value === 'admin' && document.getElementById('password').value === '123456') {
             document.getElementById('login-overlay').style.display = 'none';
             document.getElementById('main-app').style.display = 'flex';
-            map.invalidateSize();
-            loadDataOnline();
+            map.invalidateSize(); loadDataOnline();
         } else { document.getElementById('login-error').style.display = 'block'; }
     }
 
@@ -128,15 +127,15 @@
                 if (!isNaN(lat) && !isNaN(lng)) {
                     const m = L.circleMarker([lat, lng], { radius: 5, color: '#2d3436', weight: 1, fillOpacity: 0.8, fillColor: ds > 0 ? '#ff4757' : '#95a5a6', interactive: true });
                     m.bindTooltip(`<b>${col[1]}</b><br>DS: ${ds.toLocaleString()}`, { sticky: true });
-                    dealers.push({ latlng: L.latLng(lat, lng), ds, ten: col[1], ma: col[0], marker: m });
+                    dealers.push({ latlng: L.latLng(lat, lng), ds, ten: col[1], marker: m });
                     if (document.getElementById('pointToggle').value === 'on') m.addTo(dealerLayer);
                     if (ds > 0) hp.push([lat, lng, Math.min(0.4 + (ds/500000000)*0.4, 1.2)]);
                 }
             });
             if (heatLayer) heatLayerGroup.removeLayer(heatLayer);
-            heatLayer = L.heatLayer(hp, { radius: 95, blur: 30, max: 1.0, gradient: { 0.2: '#ff9f43', 0.5: '#ff4757', 0.8: '#b33939', 1.0: '#5e0000' } });
+            heatLayer = L.heatLayer(hp, { radius: 95, blur: 30, max: 1.0, gradient: { 0.2: 'yellow', 0.5: '#red', 0.8: 'black', 1.0: '#5e0000' } });
             if (document.getElementById('heatToggle').value === 'on') heatLayer.addTo(heatLayerGroup);
-        } catch (e) { alert("Lỗi tải dữ liệu!"); }
+        } catch (e) { alert("Lỗi tải!"); }
     }
 
     async function searchArea() {
@@ -169,23 +168,18 @@
     map.on('click', e => {
         if (document.getElementById('pinToggle').value !== 'on') return;
         const radiusKm = parseFloat(document.getElementById('radiusInput').value) || 3;
-        const radiusMeters = radiusKm * 1000;
         const m = L.marker(e.latlng, { draggable: true }).addTo(map);
-        const c = L.circle(e.latlng, { radius: radiusMeters, color: '#ff4757', fillOpacity: 0.1, interactive: false }).addTo(map);
+        const c = L.circle(e.latlng, { radius: radiusKm * 1000, color: '#ff4757', fillOpacity: 0.1, interactive: false }).addTo(map);
         const id = Date.now();
-        const wh = { id, marker: m, circle: c, latlng: e.latlng, radius: radiusMeters, name: "Kho " + (warehouses.length + 1) };
-        m.on('contextmenu', () => { map.removeLayer(m); map.removeLayer(c); warehouses = warehouses.filter(x => x.id !== id); updateStats(); });
+        const wh = { id, marker: m, circle: c, latlng: e.latlng, radius: radiusKm * 1000, name: "Kho " + (warehouses.length + 1) };
+        m.on('contextmenu', () => deleteWh(id));
         m.on('dragend', () => { wh.latlng = m.getLatLng(); c.setLatLng(wh.latlng); updateStats(); });
         warehouses.push(wh); updateStats();
-    });
+    } );
 
     function updateAllRadius() {
-        const radiusKm = parseFloat(document.getElementById('radiusInput').value) || 3;
-        const radiusMeters = radiusKm * 1000;
-        warehouses.forEach(w => {
-            w.radius = radiusMeters;
-            w.circle.setRadius(radiusMeters);
-        });
+        const rKm = parseFloat(document.getElementById('radiusInput').value) || 3;
+        warehouses.forEach(w => { w.radius = rKm * 1000; w.circle.setRadius(rKm * 1000); });
         updateStats();
     }
 
@@ -199,25 +193,27 @@
 
     async function toggleList(id) {
         const listDiv = document.getElementById(`list-${id}`);
-        if (listDiv.style.display === "block") { listDiv.style.display = "none"; }
-        else {
-            listDiv.style.display = "block";
+        listDiv.style.display = (listDiv.style.display === "block") ? "none" : "block";
+        if (listDiv.style.display === "block") {
             const wh = warehouses.find(w => w.id === id);
             const items = listDiv.querySelectorAll('.dist-val');
             for (let item of items) {
-                if (item.innerText === "...") {
-                    item.innerText = await getRouteDistance(wh.latlng, {lat: item.dataset.lat, lng: item.dataset.lng});
-                }
+                if (item.innerText === "...") item.innerText = await getRouteDistance(wh.latlng, {lat: item.dataset.lat, lng: item.dataset.lng});
             }
         }
     }
 
+    function deleteWh(id) {
+        const wh = warehouses.find(w => w.id === id);
+        if (wh) { map.removeLayer(wh.marker); map.removeLayer(wh.circle); warehouses = warehouses.filter(w => w.id !== id); updateStats(); }
+    }
+
     function updateStats() {
         const d = document.getElementById('warehouse-list');
-        d.innerHTML = '<strong style="color:#ff4757; display:block; margin:10px 0; font-size:12px;">DANH SÁCH KHO:</strong>';
+        d.innerHTML = '<strong style="color:#ff4757; display:block; margin:5px 0; font-size:12px;">DANH SÁCH KHO:</strong>';
         warehouses.forEach(w => {
             const inR = dealers.filter(x => w.latlng.distanceTo(x.latlng) <= w.radius);
-            const s = inR.reduce((a, b) => a + b.ds, 0);
+            const sum = inR.reduce((a, b) => a + b.ds, 0);
             const rows = inR.sort((a,b) => b.ds - a.ds).map(x => `
                 <div class="dealer-row">
                     <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${x.ten}</span>
@@ -229,26 +225,13 @@
                     <div onclick="toggleList(${w.id})" style="cursor:pointer; font-weight:bold; display:flex; justify-content:space-between; font-size:13px;">
                         ${w.name} (${(w.radius/1000).toFixed(1)}km) <span>▼</span>
                     </div>
-                    <div style="font-size:11px; margin-top:5px; color:#bdc3c7;">KH: ${inR.length} | Tổng DS: <b style="color:#f1c40f">${s.toLocaleString()}</b></div>
+                    <div style="font-size:11px; margin-top:3px; color:#bdc3c7;">KH: ${inR.length} | DS: <b style="color:#f1c40f">${sum.toLocaleString()}</b></div>
                     <div class="dealer-list" id="list-${w.id}">
-                        <div class="dealer-row" style="font-weight:bold; border-bottom:1px solid #777; color:#3498db;">
-                            <span>Tên</span><span>DS</span><span>Km xe</span>
-                        </div>
                         ${rows || '<div style="padding:5px;">Trống</div>'}
-                        <button style="background:#ff4757; color:white; padding:8px; margin-top:10px; width:100%; border:none; border-radius:4px; font-weight:bold;" onclick="deleteWh(${id=w.id})">XÓA KHO</button>
+                        <button style="background:#ff4757; color:white; padding:5px; margin-top:8px; width:100%; border:none; border-radius:4px; font-weight:bold;" onclick="deleteWh(${w.id})">XÓA</button>
                     </div>
                 </div>`;
         });
-    }
-    // Sửa lỗi hàm xóa kho trong V10.2
-    function deleteWh(id) {
-        const wh = warehouses.find(w => w.id === id);
-        if (wh) {
-            map.removeLayer(wh.marker);
-            map.removeLayer(wh.circle);
-            warehouses = warehouses.filter(w => w.id !== id);
-            updateStats();
-        }
     }
 </script>
 </body>
