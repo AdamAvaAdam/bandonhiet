@@ -3,47 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Điều phối V10.5 - Dũng Nguyễn</title>
+    <title>Điều phối V10.6 - Dũng Nguyễn</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        body { margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background: #1e272e; overflow: hidden; }
-        #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1e272e; display: flex; align-items: center; justify-content: center; z-index: 10000; }
-        .login-box { background: #2d3436; padding: 25px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.7); width: 85%; max-width: 320px; text-align: center; border: 2px solid #ff4757; }
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background: #ffffff; overflow: hidden; }
+        #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f1f2f6; display: flex; align-items: center; justify-content: center; z-index: 10000; }
+        .login-box { background: #ffffff; padding: 25px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 85%; max-width: 320px; text-align: center; border: 2px solid #ff4757; }
         .login-box h2 { color: #ff4757; margin-bottom: 20px; }
-        .login-box input { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #485460; background: #1e272e; color: white; font-size: 16px; box-sizing: border-box; }
+        .login-box input { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #ced4da; background: #f8f9fa; color: #2d3436; font-size: 16px; box-sizing: border-box; }
         .login-box button { width: 100%; padding: 14px; background: #ff4757; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
 
         #main-app { display: none; height: 100vh; flex-direction: column; }
-        #map { flex-grow: 1; width: 100%; }
-        #sidebar { width: 100%; max-height: 50%; background: #1e272e; color: #ecf0f1; overflow-y: auto; z-index: 1000; padding: 12px; box-sizing: border-box; border-top: 2px solid #ff4757; }
+        #map { flex-grow: 1; width: 100%; background: #ffffff; }
+        #sidebar { width: 100%; max-height: 50%; background: #f8f9fa; color: #2d3436; overflow-y: auto; z-index: 1000; padding: 12px; box-sizing: border-box; border-top: 2px solid #ff4757; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); }
         
         @media (min-width: 768px) {
             #main-app { flex-direction: row; }
             #sidebar { width: 420px; max-height: 100%; border-top: none; border-right: 2px solid #ff4757; }
         }
 
-        .card { background: #2d3436; border-radius: 10px; padding: 10px; margin-bottom: 10px; border: 1px solid #485460; }
-        .card-title { font-weight: bold; color: #ff4757; margin-bottom: 6px; font-size: 12px; border-bottom: 1px solid #485460; padding-bottom: 4px; text-transform: uppercase; }
+        .card { background: #ffffff; border-radius: 10px; padding: 10px; margin-bottom: 10px; border: 1px solid #dee2e6; }
+        .card-title { font-weight: bold; color: #ff4757; margin-bottom: 6px; font-size: 12px; border-bottom: 1px solid #dee2e6; padding-bottom: 4px; text-transform: uppercase; }
         
-        input, select, button.action-btn { width: 100%; padding: 8px; margin-top: 5px; border-radius: 6px; border: none; font-size: 14px; box-sizing: border-box; }
-        .btn-refresh { background: #2ecc71; color: white; font-weight: bold; margin-bottom: 5px; }
-        .btn-search { background: #3498db; color: white; font-weight: bold; }
-        .btn-clear { background: #7f8c8d; color: white; font-weight: bold; margin-top: 5px; }
+        input, select, button.action-btn { width: 100%; padding: 8px; margin-top: 5px; border-radius: 6px; border: 1px solid #ced4da; font-size: 14px; box-sizing: border-box; }
+        .btn-refresh { background: #2ecc71; color: white; font-weight: bold; border: none; }
+        .btn-search { background: #3498db; color: white; font-weight: bold; border: none; }
+        .btn-clear { background: #7f8c8d; color: white; font-weight: bold; border: none; margin-top: 5px; }
 
-        #zoom-info { position: absolute; top: 10px; right: 10px; z-index: 1000; background: rgba(0,0,0,0.8); color: #f1c40f; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; border: 1px solid #ff4757; }
-        .stats-box { background: #34495e; padding: 10px; border-radius: 8px; margin-top: 8px; border-left: 4px solid #ff4757; }
-        .dealer-row { display: grid; grid-template-columns: 1fr 75px 55px; gap: 4px; padding: 4px 0; border-bottom: 1px solid #444; font-size: 11px; align-items: center; }
-        .sales-tag { color: #f1c40f; text-align: right; font-weight: bold; }
+        #zoom-info { position: absolute; top: 10px; right: 10px; z-index: 1000; background: rgba(255,255,255,0.9); color: #ff4757; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; border: 1px solid #ff4757; }
+        .stats-box { background: #f1f2f6; padding: 10px; border-radius: 8px; margin-top: 8px; border-left: 4px solid #ff4757; color: #2d3436; }
+        .dealer-row { display: grid; grid-template-columns: 1fr 75px 55px; gap: 4px; padding: 4px 0; border-bottom: 1px solid #dee2e6; font-size: 11px; align-items: center; }
+        .sales-tag { color: #d63031; text-align: right; font-weight: bold; }
         
-        .leaflet-heatmap-layer { pointer-events: none !important; opacity: 0.85 !important; }
-        .leaflet-marker-pane { z-index: 650 !important; }
+        /* Hiệu ứng nhiệt tối màu cực gắt */
+        .leaflet-heatmap-layer { pointer-events: none !important; opacity: 0.8 !important; mix-blend-mode: multiply; }
     </style>
 </head>
 <body>
 
 <div id="login-overlay">
     <div class="login-box">
-        <h2>HỆ THỐNG V10.5</h2>
+        <h2>HỆ THỐNG V10.6</h2>
         <input type="text" id="username" placeholder="Tên đăng nhập">
         <input type="password" id="password" placeholder="Mật khẩu">
         <button onclick="checkLogin()">ĐĂNG NHẬP</button>
@@ -66,13 +66,10 @@
         </div>
         
         <div class="card">
-            <div class="card-title">📍 THIẾT LẬP KHO & BÁN KÍNH</div>
+            <div class="card-title">📍 BÁN KÍNH KHO (KM)</div>
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: center;">
                 <select id="pinToggle"><option value="off">XEM</option><option value="on">CẮM KHO</option></select>
-                <div style="position: relative;">
-                    <input type="number" id="radiusInput" value="3" step="0.5" min="0.1" oninput="updateAllRadius()" style="padding-right: 30px;">
-                    <span style="position: absolute; right: 8px; top: 13px; color: #2d3436; font-size: 11px; font-weight: bold;">KM</span>
-                </div>
+                <input type="number" id="radiusInput" value="3" step="0.5" min="0.1" oninput="updateAllRadius()">
             </div>
         </div>
 
@@ -101,9 +98,10 @@
         } else { document.getElementById('login-error').style.display = 'block'; }
     }
 
+    // SỬ DỤNG BẢN ĐỒ NỀN TRẮNG (Positron)
     const map = L.map('map', { tap: true, zoomSnap: 0.1, zoomControl: false }).setView([21.02, 105.83], 12);
     L.control.zoom({ position: 'topleft' }).addTo(map);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
 
     let dealers = [], warehouses = [], highlightLayer = L.layerGroup().addTo(map), 
         heatLayerGroup = L.layerGroup().addTo(map), dealerLayer = L.layerGroup().addTo(map), heatLayer = null;
@@ -115,39 +113,42 @@
             const t = await r.text();
             const rows = t.split(/\r?\n/).filter(row => row.trim() !== "").slice(1);
             
-            dealers = []; 
-            dealerLayer.clearLayers();
+            dealers = []; dealerLayer.clearLayers();
             let hp = [];
 
             rows.forEach(line => {
                 const col = line.split(/,|\t/);
                 if (col.length < 6) return;
-
-                let dsStr = col[5] ? col[5].toString().replace(/\./g, '').replace(/,/g, '').trim() : "0";
-                let ds = parseFloat(dsStr) || 0;
-                let lat = parseFloat(col[4].toString().replace(',', '.').trim());
-                let lng = parseFloat(col[3].toString().replace(',', '.').trim());
+                let ds = parseFloat(col[5].toString().replace(/\./g, '').replace(/,/g, '')) || 0;
+                let lat = parseFloat(col[4].toString().replace(',', '.'));
+                let lng = parseFloat(col[3].toString().replace(',', '.'));
 
                 if (!isNaN(lat) && !isNaN(lng)) {
-                    const m = L.circleMarker([lat, lng], { radius: 5, color: '#2d3436', weight: 1, fillOpacity: 0.8, fillColor: ds > 0 ? '#ff4757' : '#95a5a6', interactive: true });
+                    const m = L.circleMarker([lat, lng], { radius: 5, color: '#ff4757', weight: 1, fillOpacity: 0.8, fillColor: ds > 0 ? '#ff4757' : '#ced4da', interactive: true });
                     m.bindTooltip(`<b>${col[1]}</b><br>DS: ${ds.toLocaleString()}`, { sticky: true });
                     dealers.push({ latlng: L.latLng(lat, lng), ds, ten: col[1], marker: m });
                     
                     if (document.getElementById('pointToggle').value === 'on') m.addTo(dealerLayer);
                     if (ds > 0) {
-                        let intensity = 0.5 + (ds / 400000000) * 0.5;
-                        hp.push([lat, lng, Math.min(intensity, 1.2)]);
+                        let intensity = 0.5 + (ds / 300000000) * 0.5;
+                        hp.push([lat, lng, Math.min(intensity, 1.5)]);
                     }
                 }
             });
 
             if (heatLayer) heatLayerGroup.removeLayer(heatLayer);
+            // GRADIENT TỐI MÀU GẮT (ĐỎ ĐÔ - ĐEN)
             heatLayer = L.heatLayer(hp, { 
-                radius: 80, blur: 22, max: 1.0, 
-                gradient: { 0.2: '#ffd32a', 0.4: '#ff3f34', 0.7: '#b71540', 1.0: '#3e0e0e' } 
+                radius: 85, blur: 25, max: 1.0, 
+                gradient: { 
+                    0.4: '#c0392b', // Đỏ đô
+                    0.6: '#8e44ad', // Tím than đậm
+                    0.8: '#2c3e50', // Xám đen
+                    1.0: '#000000'  // Đen quánh
+                } 
             });
             if (document.getElementById('heatToggle').value === 'on') heatLayer.addTo(heatLayerGroup);
-        } catch (e) { console.error("Lỗi:", e); }
+        } catch (e) { alert("Lỗi tải!"); }
     }
 
     async function searchArea() {
@@ -157,7 +158,7 @@
         const data = await resp.json();
         if (data.length > 0) {
             highlightLayer.clearLayers();
-            const g = L.geoJSON(data[0].geojson, { style: { color: "#3498db", weight: 3, fillOpacity: 0 }, interactive: false }).addTo(highlightLayer);
+            const g = L.geoJSON(data[0].geojson, { style: { color: "#ff4757", weight: 2, fillOpacity: 0.05 }, interactive: false }).addTo(highlightLayer);
             map.fitBounds(g.getBounds(), { padding: [20, 20] });
         }
     }
@@ -174,17 +175,14 @@
 
     map.on('zoomend', () => {
         const z = map.getZoom(); document.getElementById('zoom-level').innerText = z.toFixed(1);
-        if (heatLayer) {
-            let r = (z >= 13) ? 90 : (z >= 11 ? 75 : 55);
-            heatLayer.setOptions({ radius: r, blur: (z >= 13 ? 28 : 22) });
-        }
+        if (heatLayer) heatLayer.setOptions({ radius: (z >= 13) ? 100 : (z >= 11 ? 80 : 60) });
     });
 
     map.on('click', e => {
         if (document.getElementById('pinToggle').value !== 'on') return;
         const rKm = parseFloat(document.getElementById('radiusInput').value) || 3;
         const m = L.marker(e.latlng, { draggable: true }).addTo(map);
-        const c = L.circle(e.latlng, { radius: rKm * 1000, color: '#ff4757', fillOpacity: 0.1, interactive: false }).addTo(map);
+        const c = L.circle(e.latlng, { radius: rKm * 1000, color: '#2d3436', weight: 2, fillOpacity: 0.1, interactive: false }).addTo(map);
         const id = Date.now();
         const wh = { id, marker: m, circle: c, latlng: e.latlng, radius: rKm * 1000, name: "Kho " + (warehouses.length + 1) };
         m.on('contextmenu', () => deleteWh(id));
@@ -240,7 +238,7 @@
                     <div onclick="toggleList(${w.id})" style="cursor:pointer; font-weight:bold; display:flex; justify-content:space-between; font-size:13px;">
                         ${w.name} (${(w.radius/1000).toFixed(1)}km) <span>▼</span>
                     </div>
-                    <div style="font-size:11px; margin-top:3px; color:#bdc3c7;">KH: ${inR.length} | DS: <b style="color:#f1c40f">${sum.toLocaleString()}</b></div>
+                    <div style="font-size:11px; margin-top:3px; color:#636e72;">KH: ${inR.length} | DS: <b style="color:#d63031">${sum.toLocaleString()}</b></div>
                     <div class="dealer-list" id="list-${w.id}">
                         ${rows || '<div style="padding:5px;">Trống</div>'}
                         <button style="background:#ff4757; color:white; padding:5px; margin-top:8px; width:100%; border:none; border-radius:4px; font-weight:bold;" onclick="deleteWh(${w.id})">XÓA</button>
