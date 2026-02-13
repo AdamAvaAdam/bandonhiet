@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Điều phối Online V8.1 - Dũng Nguyễn</title>
+    <title>Điều phối Online V8.2 - Dũng Nguyễn</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; display: flex; height: 100vh; background: #1e272e; }
@@ -22,19 +22,21 @@
         .dealer-row { display: grid; grid-template-columns: 1fr 85px 65px; gap: 8px; padding: 8px 0; border-bottom: 1px solid #444; align-items: center; }
         .dist-tag { color: #2ecc71; font-weight: bold; text-align: right; }
         .sales-tag { color: #f1c40f; text-align: right; font-weight: bold; }
+        /* Cố định Z-index để điểm luôn nằm trên nhiệt */
         .leaflet-heatmap-layer, .leaflet-interactivePath { pointer-events: none !important; }
         .leaflet-marker-pane { z-index: 650 !important; }
+        .leaflet-tooltip-pane { z-index: 700 !important; }
     </style>
 </head>
 <body>
 
 <div id="sidebar">
-    <h2 style="color: #ff4757; text-align: center; margin-bottom: 20px;">ĐIỀU PHỐI ONLINE V8.1</h2>
+    <h2 style="color: #ff4757; text-align: center; margin-bottom: 20px;">ĐIỀU PHỐI ONLINE V8.2</h2>
 
     <div class="card">
         <div class="card-title">🔄 DỮ LIỆU TRỰC TUYẾN</div>
         <button class="btn-refresh" onclick="loadDataOnline()">LÀM MỚI DỮ LIỆU</button>
-        <p style="font-size: 11px; color: #bdc3c7; margin-top: 8px;">*Dữ liệu đang kết nối với Google Sheets của Dũng</p>
+        <p style="font-size: 11px; color: #bdc3c7; margin-top: 8px;">*Đang kết nối Google Sheets của Dũng</p>
     </div>
 
     <div class="card">
@@ -72,12 +74,12 @@
     let heatLayer = null;
 
     async function loadDataOnline() {
+        // DÙNG LINK CSV CHUẨN ĐÃ ĐƯỢC KIỂM TRA
         const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSqx48yei68qBJFSiHZzxCeGO0df4IDE6md9hzu7TUv5GjgOvU9yIpm4lEN6HJw9zJuek4YYMj8XAyn/pub?output=csv";
         
         try {
             const response = await fetch(sheetUrl);
             const csvText = await response.text();
-            // Tự động tách dòng bằng xuống dòng, tách cột bằng dấu phẩy hoặc tab
             const rows = csvText.split(/\r?\n/).slice(1);
             
             dealers = [];
@@ -85,10 +87,12 @@
             let heatPoints = [];
 
             rows.forEach(rowStr => {
-                const row = rowStr.split(/,|\t/); // Nhận diện cả phẩy và tab
+                const row = rowStr.split(/,|\t/);
                 if (row.length < 6) return;
 
-                const ds = parseFloat(row[5].replace(/\./g, '').replace(/,/g, '')) || 0;
+                // Xử lý làm sạch số doanh số để tránh lỗi nhạt màu
+                const rawDS = row[5] ? row[5].toString().replace(/\./g, '').replace(/,/g, '') : "0";
+                const ds = parseFloat(rawDS) || 0;
                 const lat = parseFloat(row[4]);
                 const lng = parseFloat(row[3]);
 
@@ -102,7 +106,8 @@
                     dealers.push({ latlng: L.latLng(lat, lng), ds: ds, ten: row[1], ma: row[0] });
 
                     if (ds > 0) {
-                        let intensity = 0.3 + (ds / 1000000000) * 0.7;
+                        // Tăng cường độ đỏ rực rỡ dựa trên mốc 500 triệu
+                        let intensity = 0.4 + (ds / 500000000) * 0.3;
                         heatPoints.push([lat, lng, Math.min(intensity, 1.2)]);
                     }
                 }
@@ -110,12 +115,12 @@
 
             if (heatLayer) heatLayerGroup.removeLayer(heatLayer);
             heatLayer = L.heatLayer(heatPoints, { 
-                radius: 95, blur: 35, max: 1.0, 
+                radius: 95, blur: 30, max: 1.0, 
                 gradient: { 0.2: '#ff9f43', 0.5: '#ff4757', 0.8: '#b33939', 1.0: '#5e0000' } 
             }).addTo(heatLayerGroup);
             updateHeatEffect();
         } catch (e) {
-            alert("Lỗi kết nối Google Sheets. Hãy kiểm tra lại link!");
+            console.error(e);
         }
     }
 
@@ -141,8 +146,8 @@
         if (!heatLayer) return;
         const z = map.getZoom();
         document.getElementById('zoom-level').innerText = z.toFixed(1);
-        let r = (z >= 13) ? 100 : (z >= 11 ? 75 : 60 + (11-z)*15);
-        heatLayer.setOptions({ radius: r, blur: (z >= 13 ? 40 : 20) });
+        let r = (z >= 13.5) ? 105 : (z >= 12 ? 85 : 60 + (11-z)*15);
+        heatLayer.setOptions({ radius: r, blur: (z >= 13 ? 35 : 20) });
     }
     map.on('zoomend', updateHeatEffect);
 
@@ -175,7 +180,7 @@
             const sumSales = inRange.reduce((s, d) => s + d.ds, 0);
             const rows = inRange.sort((a,b) => b.ds - a.ds).map(d => `
                 <div class="dealer-row">
-                    <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${d.ten}</span>
+                    <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${d.ten}">${d.ten}</span>
                     <span class="sales-tag">${d.ds.toLocaleString()}</span>
                     <span class="dist-tag">${(w.latlng.distanceTo(d.latlng)/1000).toFixed(1)}km</span>
                 </div>`).join('');
@@ -187,7 +192,7 @@
                     <div style="font-size:12px; margin-top:5px;">KH: ${inRange.length} | Tổng DS: <b style="color:#f1c40f">${sumSales.toLocaleString()}</b></div>
                     <div class="dealer-list" id="list-${w.id}">
                         <div class="dealer-row" style="font-weight:bold; border-bottom:1px solid #777; color:#3498db;">
-                            <span>Tên</span><span>DS</span><span>Chim bay</span>
+                            <span>Tên</span><span>Doanh số</span><span>Km</span>
                         </div>
                         ${rows || '<div style="padding:10px;">Trống</div>'}
                         <button style="background:#ff4757; color:white; padding:5px; margin-top:10px;" onclick="deleteWh(${w.id})">XÓA KHO</button>
