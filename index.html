@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hệ thống Cộng hưởng V6.5 - Dũng Nguyễn</title>
+    <title>Hệ thống Điều phối V6.6 - Dũng Nguyễn</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; display: flex; height: 100vh; background: #1e272e; }
@@ -24,31 +24,23 @@
 <body>
 
 <div id="sidebar">
-    <h2 style="color: #e74c3c; margin: 0 0 15px 0;">ĐIỀU PHỐI V6.5</h2>
-    
+    <h2 style="color: #e74c3c; margin: 0 0 15px 0;">ĐIỀU PHỐI V6.6</h2>
     <div class="section">
         <div class="section-header" onclick="toggleSec(this)">1. Điều khiển & Tìm kiếm <span>[−]</span></div>
         <div class="section-content">
-            <select id="heatToggle" onchange="toggleHeatLayer()">
-                <option value="on">BẬT Cộng hưởng nhiệt</option>
-                <option value="off">TẮT nhiệt</option>
-            </select>
+            <select id="heatToggle" onchange="toggleHeatLayer()"><option value="on">BẬT Cộng hưởng nhiệt</option><option value="off">TẮT nhiệt</option></select>
             <input type="text" id="areaSearchInput" placeholder="Vd: Quận Hoàng Mai, Hà Nội" style="margin-top:15px;">
-            <button onclick="searchArea()" style="background:#3498db;">🔍 Tìm & Bo viền</button>
+            <button onclick="searchArea()" style="background:#3498db;">🔍 Tìm & Chỉ lấy viền</button>
             <div style="display:flex; align-items:center; justify-content:space-between; margin-top:15px;">
                 <span>Cắm điểm đề xuất:</span>
                 <select id="pinToggle" style="width:100px;"><option value="off">TẮT</option><option value="on">BẬT</option></select>
             </div>
         </div>
     </div>
-
     <div class="section">
         <div class="section-header" onclick="toggleSec(this)">2. Dữ liệu Đại lý <span>[−]</span></div>
-        <div class="section-content">
-            <input type="file" id="excelFile" accept=".xlsx, .xls">
-        </div>
+        <div class="section-content"><input type="file" id="excelFile" accept=".xlsx, .xls"></div>
     </div>
-
     <div id="warehouse-list"></div>
 </div>
 
@@ -70,8 +62,7 @@
     let heatLayer = null;
 
     function toggleSec(h) {
-        const c = h.nextElementSibling;
-        const s = h.querySelector('span');
+        const c = h.nextElementSibling; const s = h.querySelector('span');
         c.style.display = (c.style.display === "none") ? "block" : "none";
         s.innerText = (c.style.display === "none") ? "[+]" : "[−]";
     }
@@ -85,7 +76,14 @@
             const data = await resp.json();
             if (data && data.length > 0) {
                 highlightLayer.clearLayers();
-                const geoLayer = L.geoJSON(data[0].geojson, { style: { color: "#3498db", weight: 3, fillOpacity: 0.15 }, interactive: false }).addTo(highlightLayer);
+                const geoLayer = L.geoJSON(data[0].geojson, { 
+                    style: { 
+                        color: "#3498db", 
+                        weight: 4, 
+                        fillOpacity: 0 // KHÔNG PHỦ MÀU BÊN TRONG
+                    }, 
+                    interactive: false 
+                }).addTo(highlightLayer);
                 map.fitBounds(geoLayer.getBounds(), { padding: [20, 20] });
             }
         } catch (e) { console.error(e); }
@@ -98,13 +96,11 @@
             const data = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1});
             dealers = []; dealerLayer.clearLayers();
             let heatPoints = [], maxSales = 0;
-            
             for(let i = 1; i < data.length; i++) {
                 const row = data[i]; if (!row || row.length < 5) continue;
                 const ds = parseFloat(row[5]) || 0;
                 if (ds > maxSales) maxSales = ds;
             }
-
             for(let i = 1; i < data.length; i++) {
                 const row = data[i]; if (!row || row.length < 5) continue;
                 const ds = parseFloat(row[5]) || 0;
@@ -112,45 +108,29 @@
                 if (!isNaN(lat) && !isNaN(lng)) {
                     const marker = L.circleMarker([lat, lng], { color: '#2d3436', radius: 4, fillOpacity: 0.8, fillColor: '#2980b9', interactive: true }).addTo(dealerLayer);
                     marker.bindTooltip(`<b>${row[1]}</b><br>DS: ${ds.toLocaleString()}`, { sticky: true, className: 'dealer-tooltip' });
-                    dealers.push({ latlng: L.latLng(lat, lng), ds: ds, name: row[1] });
+                    dealers.push({ latlng: L.latLng(lat, lng), ds: ds });
                     if (ds > 0) {
-                        // Trọng số intensity được đẩy mạnh hơn
                         let intensity = Math.pow(ds / maxSales, 0.7);
                         heatPoints.push([lat, lng, intensity]);
                     }
                 }
             }
             if (heatLayer) heatLayerGroup.removeLayer(heatLayer);
-            heatLayer = L.heatLayer(heatPoints, { 
-                radius: 40, 
-                blur: 20, 
-                max: 1.0, 
-                gradient: {0.4: 'blue', 0.6: 'cyan', 0.7: 'lime', 0.8: 'yellow', 1: 'red'} 
-            }).addTo(heatLayerGroup);
+            heatLayer = L.heatLayer(heatPoints, { radius: 40, blur: 20, max: 1.0, gradient: {0.4: 'blue', 0.6: 'cyan', 0.7: 'lime', 0.8: 'yellow', 1: 'red'} }).addTo(heatLayerGroup);
             updateHeatEffect();
         };
         reader.readAsBinaryString(e.target.files[0]);
     });
 
-    // LOGIC CỘNG HƯỞNG SIÊU MẠNH CHO ZOOM 13-14
     function updateHeatEffect() {
         if (!heatLayer) return;
         const z = map.getZoom();
         document.getElementById('zoom-level').innerText = z.toFixed(1);
-        
         let r, b;
-        if (z >= 15) {
-            r = 95; b = 40; // Soi phố cực đậm
-        } else if (z >= 13) {
-            // ĐẨY MẠNH CHO TẦM ZOOM 13-14
-            r = 75; b = 25; 
-        } else if (z >= 11) {
-            r = 55; b = 20;
-        } else {
-            r = 60 + (11 - z) * 15;
-            b = 25;
-        }
-        
+        if (z >= 15) { r = 95; b = 40; } 
+        else if (z >= 13) { r = 75; b = 25; } 
+        else if (z >= 11) { r = 55; b = 20; } 
+        else { r = 60 + (11 - z) * 15; b = 25; }
         heatLayer.setOptions({ radius: r, blur: b });
     }
     map.on('zoomend', updateHeatEffect);
@@ -166,25 +146,14 @@
         const marker = L.marker(e.latlng, { draggable: true }).addTo(map);
         const circle = L.circle(e.latlng, { color: '#e74c3c', radius: 3000, fillOpacity: 0.1, interactive: false }).addTo(map);
         const wh = { id, marker, circle, latlng: e.latlng, name: "Kho " + (warehouses.length + 1) };
-        
         marker.on('contextmenu', () => deleteWh(id));
-        marker.on('drag', () => {
-            wh.latlng = marker.getLatLng();
-            circle.setLatLng(wh.latlng);
-            updateAllStats();
-        });
-        warehouses.push(wh);
-        updateAllStats();
+        marker.on('drag', () => { wh.latlng = marker.getLatLng(); circle.setLatLng(wh.latlng); updateAllStats(); });
+        warehouses.push(wh); updateAllStats();
     });
 
     function deleteWh(id) {
         const wh = warehouses.find(w => w.id === id);
-        if (wh) {
-            map.removeLayer(wh.marker);
-            map.removeLayer(wh.circle);
-            warehouses = warehouses.filter(w => w.id !== id);
-            updateAllStats();
-        }
+        if (wh) { map.removeLayer(wh.marker); map.removeLayer(wh.circle); warehouses = warehouses.filter(w => w.id !== id); updateAllStats(); }
     }
 
     function updateAllStats() {
@@ -193,10 +162,7 @@
         warehouses.forEach(w => {
             const inRange = dealers.filter(d => w.latlng.distanceTo(d.latlng) <= 3000);
             const sumSales = inRange.reduce((s, d) => s + d.ds, 0);
-            div.innerHTML += `<div class="stats-box">
-                <b>${w.name}</b><br>Đại lý: ${inRange.length} | DS: <b style="color:#f1c40f">${sumSales.toLocaleString()}</b><br>
-                <button class="btn-del-wh" onclick="deleteWh(${w.id})">Xóa kho</button>
-            </div>`;
+            div.innerHTML += `<div class="stats-box"><b>${w.name}</b><br>KH: ${inRange.length} | DS: <b style="color:#f1c40f">${sumSales.toLocaleString()}</b><br><button class="btn-del-wh" onclick="deleteWh(${w.id})">Xóa kho</button></div>`;
         });
     }
 </script>
