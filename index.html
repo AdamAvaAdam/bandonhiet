@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Điều phối V10.8 - Weather Radar Style</title>
+    <title>Điều phối V10.9 - Phân Cấp Doanh Số</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background: #f1f2f6; overflow: hidden; }
@@ -30,19 +30,18 @@
         .dealer-row { display: grid; grid-template-columns: 1fr 80px 50px; gap: 5px; padding: 5px 0; border-bottom: 1px dotted #ccc; font-size: 11px; }
         .sales-tag { color: #d63031; text-align: right; font-weight: bold; }
         
-        /* Hiệu ứng quầng nhiệt thời tiết */
-        .leaflet-heatmap-layer { pointer-events: none !important; opacity: 0.75 !important; }
+        .leaflet-heatmap-layer { pointer-events: none !important; opacity: 0.85 !important; }
     </style>
 </head>
 <body>
 
-<div id="login-overlay"><div class="login-box"><h2>V10.8 WEATHER</h2><input type="text" id="username" placeholder="User"><input type="password" id="password" placeholder="Pass"><button onclick="checkLogin()">ĐĂNG NHẬP</button></div></div>
+<div id="login-overlay"><div class="login-box"><h2>HỆ THỐNG V10.9</h2><input type="text" id="username" placeholder="User"><input type="password" id="password" placeholder="Pass"><button onclick="checkLogin()">VÀO BẢN ĐỒ</button></div></div>
 
 <div id="main-app">
     <div id="map"></div>
     <div id="zoom-info">Z: <span id="zoom-level">12</span></div>
     <div id="sidebar">
-        <div class="card"><div class="card-title">🔍 KHU VỰC</div><input type="text" id="areaSearchInput" placeholder="Vd: Ninh Bình"><button class="action-btn btn-search" onclick="searchArea()">SOI VIỀN</button></div>
+        <div class="card"><div class="card-title">🔍 TÌM KHU VỰC</div><input type="text" id="areaSearchInput" placeholder="Vd: Ninh Bình"><button class="action-btn btn-search" onclick="searchArea()">SOI VIỀN</button></div>
         <div class="card"><div class="card-title">📍 THIẾT LẬP KHO</div><div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px;"><select id="pinToggle"><option value="off">XEM</option><option value="on">CẮM KHO</option></select><input type="number" id="radiusInput" value="3" step="0.5" oninput="updateAllRadius()"></div></div>
         <div id="warehouse-list"></div>
         <div class="card"><div class="card-title">🔄 HỆ THỐNG</div><button class="action-btn btn-refresh" onclick="loadDataOnline()">LÀM MỚI DỮ LIỆU</button></div>
@@ -55,7 +54,6 @@
 <script>
     function checkLogin() { if (document.getElementById('username').value === 'admin' && document.getElementById('password').value === '123456') { document.getElementById('login-overlay').style.display = 'none'; document.getElementById('main-app').style.display = 'flex'; map.invalidateSize(); loadDataOnline(); } }
 
-    // BẢN ĐỒ CÓ MÀU (OpenStreetMap Standard)
     const map = L.map('map', { zoomSnap: 0.1, zoomControl: false }).setView([21.02, 105.83], 12);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
@@ -73,26 +71,38 @@
                 let ds = parseFloat(col[5].toString().replace(/\./g, '').replace(/,/g, '')) || 0;
                 let lat = parseFloat(col[4].toString().replace(',', '.'));
                 let lng = parseFloat(col[3].toString().replace(',', '.'));
+                
                 if (!isNaN(lat) && !isNaN(lng)) {
-                    // Điểm đại lý: Màu đỏ gắt như tâm bão
-                    const m = L.circleMarker([lat, lng], { radius: 4, color: '#d63031', weight: 1, fillOpacity: 0.9, fillColor: ds > 0 ? '#ff0000' : '#b2bec3' }).addTo(dealerLayer);
+                    const m = L.circleMarker([lat, lng], { radius: 4, color: '#2d3436', weight: 0.5, fillOpacity: 0.8, fillColor: ds > 0 ? '#ff0000' : '#b2bec3' }).addTo(dealerLayer);
                     m.bindTooltip(`<b>${col[1]}</b><br>DS: ${ds.toLocaleString()}`);
                     dealers.push({ latlng: L.latLng(lat, lng), ds, ten: col[1] });
-                    if (ds > 0) hp.push([lat, lng, ds / 250000000]);
+                    
+                    // THUẬT TOÁN PHÂN CẤP CỦA DŨNG
+                    if (ds > 0) {
+                        let intensity = 0;
+                        if (ds >= 2000000000) intensity = 1.0;        // Trên 2 tỷ -> Cực đại
+                        else if (ds >= 1200000000) intensity = 0.8;   // Dưới 2 tỷ
+                        else if (ds >= 800000000) intensity = 0.6;    // Dưới 1.2 tỷ
+                        else if (ds >= 400000000) intensity = 0.4;    // Dưới 800tr
+                        else if (ds >= 200000000) intensity = 0.2;    // Dưới 400tr
+                        else intensity = 0.1;                         // Dưới 200tr
+
+                        hp.push([lat, lng, intensity]);
+                    }
                 }
             });
 
             if (heatLayer) heatLayerGroup.removeLayer(heatLayer);
-            // GRADIENT KIỂU THỜI TIẾT (Weather Radar Gradient)
+            // GRADIENT PHÂN CẤP ĐẬM ĐẶC
             heatLayer = L.heatLayer(hp, { 
-                radius: 70, blur: 20, max: 1.0,
+                radius: 80, blur: 20, max: 1.0,
                 gradient: { 
-                    0.2: '#00ff00', // Xanh lá (Bắt đầu có số)
-                    0.4: '#ffff00', // Vàng
-                    0.6: '#ff7f00', // Cam
-                    0.8: '#ff0000', // Đỏ (Bán tốt)
-                    0.9: '#9400d3', // Tím (Cực tốt)
-                    1.0: '#000000'  // Đen (Mỏ vàng)
+                    0.1: '#00ff00', // Xanh lá nhạt (<200tr)
+                    0.2: '#ffff00', // Vàng (<400tr)
+                    0.4: '#ff7f00', // Cam (<800tr)
+                    0.6: '#ff0000', // Đỏ tươi (<1.2 tỷ)
+                    0.8: '#4b0000', // Đỏ sẫm (<2 tỷ)
+                    1.0: '#000000'  // Đen quánh (>=2 tỷ)
                 } 
             }).addTo(heatLayerGroup);
             updateZoomParams();
@@ -102,8 +112,8 @@
     function updateZoomParams() {
         if (!heatLayer) return;
         const z = map.getZoom(); document.getElementById('zoom-level').innerText = z.toFixed(1);
-        let r = (z >= 14) ? 90 : (z >= 13 ? 75 : 50);
-        heatLayer.setOptions({ radius: r, blur: 18 });
+        let r = (z >= 13.5) ? 100 : (z >= 12 ? 80 : 55);
+        heatLayer.setOptions({ radius: r, blur: (z >= 13 ? 25 : 20) });
     }
     map.on('zoomend', updateZoomParams);
 
@@ -114,7 +124,7 @@
         if (data.length > 0) { 
             highlightLayer.clearLayers(); 
             const g = L.geoJSON(data[0].geojson, { style: { color: "#0984e3", weight: 3, fillOpacity: 0.1 } }).addTo(highlightLayer); 
-            map.fitBounds(g.getBounds()); 
+            map.fitBounds(g.getBounds(), { padding: [20,20] }); 
         }
     }
 
@@ -155,7 +165,7 @@
 
     function updateStats() {
         const d = document.getElementById('warehouse-list');
-        d.innerHTML = '<strong style="color:#0984e3; display:block; margin:5px 0; font-size:12px;">DANH SÁCH KHO CHIẾN LƯỢC:</strong>';
+        d.innerHTML = '<strong style="color:#0984e3; display:block; margin:5px 0; font-size:12px;">KHO CHIẾN LƯỢC:</strong>';
         warehouses.forEach(w => {
             const inR = dealers.filter(x => w.latlng.distanceTo(x.latlng) <= w.radius);
             const sum = inR.reduce((a, b) => a + b.ds, 0);
@@ -167,14 +177,16 @@
                 </div>`).join('');
             d.innerHTML += `
                 <div class="stats-box">
-                    <div onclick="toggleList(${w.id})" style="cursor:pointer; font-weight:bold; display:flex; justify-content:space-between; color:#2d3436;">
+                    <div onclick="toggleList(${w.id})" style="cursor:pointer; font-weight:bold; display:flex; justify-content:space-between;">
                         ${w.name} (${(w.radius/1000).toFixed(1)}km) <span>▼</span>
                     </div>
-                    <div style="font-size:11px; color:#636e72;">Đại lý: ${inR.length} | Tổng DS: <b style="color:#e17055">${sum.toLocaleString()}</b></div>
+                    <div style="font-size:11px;">Đại lý: ${inR.length} | Tổng DS: <b style="color:#e17055">${sum.toLocaleString()}</b></div>
                     <div id="list-${w.id}" style="display:none; margin-top:8px;">${rows || 'Trống'}</div>
+                    <button style="background:#ff7675; color:white; padding:4px; margin-top:5px; width:100%; border:none; border-radius:4px; font-size:10px;" onclick="deleteWh(${w.id})">XÓA</button>
                 </div>`;
         });
     }
+    function deleteWh(id) { const wh = warehouses.find(w => w.id === id); if (wh) { map.removeLayer(wh.marker); map.removeLayer(wh.circle); warehouses = warehouses.filter(w => w.id !== id); updateStats(); } }
 </script>
 </body>
 </html>
