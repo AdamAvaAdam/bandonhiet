@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Điều phối Online V8.4 - Dũng Nguyễn</title>
+    <title>Điều phối Online V8.5 - Dũng Nguyễn</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; display: flex; height: 100vh; background: #1e272e; }
@@ -16,30 +16,42 @@
         .btn-search { background: #3498db; color: white; }
         #zoom-info { position: absolute; bottom: 20px; left: 420px; z-index: 1000; background: rgba(0,0,0,0.85); color: #f1c40f; padding: 8px 18px; border-radius: 20px; font-weight: bold; border: 2px solid #ff4757; }
         .stats-box { background: #34495e; padding: 12px; border-radius: 8px; margin-top: 10px; border-left: 5px solid #ff4757; }
-        .dealer-row { display: grid; grid-template-columns: 1fr 90px 60px; gap: 5px; padding: 6px 0; border-bottom: 1px solid #444; font-size: 12px; }
-        .sales-tag { color: #f1c40f; text-align: right; font-weight: bold; }
-        .leaflet-heatmap-layer { pointer-events: none !important; }
+        /* Đảm bảo các lớp không chặn tương tác chuột */
+        .leaflet-heatmap-layer, .leaflet-interactivePath { pointer-events: none !important; }
         .leaflet-marker-pane { z-index: 650 !important; }
     </style>
 </head>
 <body>
 
 <div id="sidebar">
-    <h2 style="color: #ff4757; text-align: center; margin-bottom: 20px;">ĐIỀU PHỐI V8.4</h2>
+    <h2 style="color: #ff4757; text-align: center; margin-bottom: 20px;">ĐIỀU PHỐI V8.5</h2>
+    
     <div class="card">
-        <div class="card-title">🔄 DỮ LIỆU TRỰC TUYẾN</div>
-        <button class="btn-refresh" onclick="loadDataOnline()">LÀM MỚI DỮ LIỆU</button>
-        <p id="data-status" style="font-size: 11px; color: #2ecc71; margin-top: 8px; text-align: center;">Đang sẵn sàng...</p>
+        <div class="card-title">🔄 DỮ LIỆU & HIỂN THỊ</div>
+        <button class="btn-refresh" onclick="loadDataOnline()">LÀM MỚI TỪ SHEETS</button>
+        
+        <div style="margin-top:15px; display:flex; justify-content:space-between; align-items:center;">
+            <span>Hiện điểm đại lý:</span>
+            <select id="pointToggle" onchange="togglePointLayer()" style="width:100px; padding:5px;"><option value="on">BẬT</option><option value="off">TẮT</option></select>
+        </div>
+        
+        <div style="margin-top:10px; display:flex; justify-content:space-between; align-items:center;">
+            <span>Hiện quầng nhiệt:</span>
+            <select id="heatToggle" onchange="toggleHeatLayer()" style="width:100px; padding:5px;"><option value="on">BẬT</option><option value="off">TẮT</option></select>
+        </div>
     </div>
+
     <div class="card">
         <div class="card-title">🔍 TÌM KHU VỰC</div>
-        <input type="text" id="areaSearchInput" style="width:100%; padding:10px; border-radius:5px;" placeholder="Vd: Hà Nội">
+        <input type="text" id="areaSearchInput" style="width:100%; padding:10px; border-radius:5px;" placeholder="Vd: Ninh Bình">
         <button class="btn-search" onclick="searchArea()">Xem ranh giới</button>
     </div>
+
     <div class="card">
-        <div class="card-title">📍 CẮM KHO ĐỀ XUẤT</div>
-        <select id="pinToggle" style="width:100%; padding:10px; border-radius:5px;"><option value="off">TẮT</option><option value="on">BẬT</option></select>
+        <div class="card-title">📍 KHO ĐỀ XUẤT</div>
+        <select id="pinToggle" style="width:100%; padding:10px; border-radius:5px;"><option value="off">TẮT CẮM GHIM</option><option value="on">BẬT CẮM GHIM</option></select>
     </div>
+    
     <div id="warehouse-list"></div>
 </div>
 
@@ -57,10 +69,6 @@
         heatLayerGroup = L.layerGroup().addTo(map), dealerLayer = L.layerGroup().addTo(map), heatLayer = null;
 
     async function loadDataOnline() {
-        const status = document.getElementById('data-status');
-        status.innerText = "Đang tải dữ liệu...";
-        
-        // SỬ DỤNG LINK CHUẨN TỪ ẢNH CỦA DŨNG
         const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSqx48yei68qBJFSiHZzxCeGO0df4IDE6md9hzu7TUv5GjgOvU9yIpm4lEN6HJw9zJuek4YYMj8XAyn/pub?gid=0&single=true&output=csv";
         
         try {
@@ -75,20 +83,24 @@
                 const col = line.split(/,|\t/);
                 if (col.length < 6) return;
 
-                // XỬ LÝ LÀM SẠCH DẤU CHẤM TRONG DOANH SỐ
+                // Chuẩn hóa doanh số (xóa dấu chấm phân cách)
                 let rawSales = col[5].toString().replace(/\./g, '').replace(/,/g, '').trim();
                 const ds = parseFloat(rawSales) || 0;
                 
-                const lat = parseFloat(col[4]);
-                const lng = parseFloat(col[3]);
+                // Chuẩn hóa tọa độ (thay dấu phẩy thành dấu chấm nếu có)
+                const lat = parseFloat(col[4].toString().replace(',', '.'));
+                const lng = parseFloat(col[3].toString().replace(',', '.'));
 
                 if (!isNaN(lat) && !isNaN(lng)) {
                     const marker = L.circleMarker([lat, lng], { 
                         radius: 5, color: '#2d3436', weight: 1, fillOpacity: 0.8, 
                         fillColor: ds > 0 ? '#ff4757' : '#95a5a6', interactive: true 
-                    }).addTo(dealerLayer);
+                    });
                     marker.bindTooltip(`<b>${col[1]}</b><br>DS: ${ds.toLocaleString()}`, { sticky: true });
-                    dealers.push({ latlng: L.latLng(lat, lng), ds, ten: col[1], ma: col[0] });
+                    
+                    dealers.push({ latlng: L.latLng(lat, lng), ds, ten: col[1], ma: col[0], marker: marker });
+                    
+                    if (document.getElementById('pointToggle').value === 'on') marker.addTo(dealerLayer);
 
                     if (ds > 0) {
                         let intensity = 0.4 + (ds / 500000000) * 0.4;
@@ -101,14 +113,24 @@
             heatLayer = L.heatLayer(heatPoints, { 
                 radius: 95, blur: 30, max: 1.0, 
                 gradient: { 0.2: '#ff9f43', 0.5: '#ff4757', 0.8: '#b33939', 1.0: '#5e0000' } 
-            }).addTo(heatLayerGroup);
+            });
             
-            status.innerText = "Cập nhật thành công!";
+            if (document.getElementById('heatToggle').value === 'on') heatLayer.addTo(heatLayerGroup);
             updateZoom();
-        } catch (e) { 
-            status.innerText = "Lỗi kết nối!";
-            alert("Vui lòng chạy link từ GitHub (HTTPS) để tránh lỗi bảo mật!"); 
+        } catch (e) { alert("Lỗi kết nối Sheets!"); }
+    }
+
+    function togglePointLayer() {
+        if (document.getElementById('pointToggle').value === 'on') {
+            dealers.forEach(d => d.marker.addTo(dealerLayer));
+        } else {
+            dealerLayer.clearLayers();
         }
+    }
+
+    function toggleHeatLayer() {
+        if (!heatLayer) return;
+        document.getElementById('heatToggle').value === 'on' ? heatLayer.addTo(heatLayerGroup) : heatLayerGroup.removeLayer(heatLayer);
     }
 
     window.onload = loadDataOnline;
@@ -116,7 +138,7 @@
     function updateZoom() {
         const z = map.getZoom(); document.getElementById('zoom-level').innerText = z.toFixed(1);
         if (heatLayer) {
-            let r = (z >= 13) ? 100 : (z >= 11 ? 80 : 60);
+            let r = (z >= 13) ? 105 : (z >= 11 ? 85 : 60);
             heatLayer.setOptions({ radius: r });
         }
     }
