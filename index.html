@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Điều phối V11.5 - Điều Phối Vận Tải</title>
+    <title>Điều phối V11.6 - Fix Tooltip</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background: #ffffff; overflow: hidden; }
@@ -29,16 +29,19 @@
         .dealer-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 11px; display: none; }
         .dealer-table th { background: #f8f9fa; text-align: left; padding: 6px; border-bottom: 1px solid #dee2e6; }
         .dealer-table td { padding: 6px; border-bottom: 1px solid #eee; }
-        .sales-val { color: #d63031; font-weight: bold; }
-        .dist-val { color: #0984e3; font-weight: bold; }
         
         .toggle-btn { cursor: pointer; color: #ff4757; font-size: 16px; font-weight: bold; }
-        .leaflet-heatmap-layer { pointer-events: none !important; opacity: 1.0 !important; mix-blend-mode: multiply; filter: saturate(1.4); }
+        
+        /* QUAN TRỌNG: Lớp nhiệt KHÔNG được chặn tương tác chuột */
+        .leaflet-heatmap-layer { pointer-events: none !important; opacity: 0.9 !important; mix-blend-mode: multiply; z-index: 200 !important; }
+        /* Ép lớp điểm đại lý lên trên cùng */
+        .leaflet-marker-pane { z-index: 600 !important; }
+        .leaflet-tooltip-pane { z-index: 700 !important; }
     </style>
 </head>
 <body>
 
-<div id="login-overlay"><div class="login-box"><h2>HỆ THỐNG V11.5</h2><input type="text" id="username" placeholder="User"><input type="password" id="password" placeholder="Pass"><button onclick="checkLogin()">ĐĂNG NHẬP</button></div></div>
+<div id="login-overlay"><div class="login-box"><h2>HỆ THỐNG V11.6</h2><input type="text" id="username" placeholder="User"><input type="password" id="password" placeholder="Pass"><button onclick="checkLogin()">ĐĂNG NHẬP</button></div></div>
 
 <div id="main-app">
     <div id="map"></div>
@@ -75,17 +78,17 @@
                 let lng = parseFloat(col[3].toString().replace(',', '.'));
                 
                 if (!isNaN(lat) && !isNaN(lng)) {
-                    L.circleMarker([lat, lng], { radius: 2.5, color: '#ff1744', weight: 1, fillOpacity: 0.8 }).addTo(dealerLayer);
+                    // Tạo Marker với tương tác chuột
+                    const m = L.circleMarker([lat, lng], { radius: 3, color: '#ff1744', weight: 1.5, fillOpacity: 0.9, fillColor: ds > 0 ? '#ff1744' : '#b0bec5', interactive: true }).addTo(dealerLayer);
+                    m.bindTooltip(`<b>${col[1]}</b><br>DS: ${ds.toLocaleString()}`, { sticky: true, opacity: 0.9 });
+                    
                     dealers.push({ latlng: L.latLng(lat, lng), ds, ten: col[1], lat, lng });
-                    if (ds > 0) {
-                        let intensity = (ds >= 2000000000) ? 2.5 : (ds / 350000000);
-                        hp.push([lat, lng, intensity]);
-                    }
+                    if (ds > 0) hp.push([lat, lng, (ds >= 2000000000) ? 2.5 : (ds / 300000000)]);
                 }
             });
 
             if (heatLayer) heatLayerGroup.removeLayer(heatLayer);
-            heatLayer = L.heatLayer(hp, { radius: 75, blur: 15, max: 0.55, gradient: { 0.3: '#ff5722', 0.6: '#ff1744', 0.8: '#b71c1c', 1.0: '#000000' } }).addTo(heatLayerGroup);
+            heatLayer = L.heatLayer(hp, { radius: 75, blur: 15, max: 0.5, gradient: { 0.3: '#ff5722', 0.6: '#ff1744', 0.8: '#b71c1c', 1.0: '#000000' } }).addTo(heatLayerGroup);
         } catch (e) { console.error(e); }
     }
 
@@ -103,6 +106,7 @@
         const data = await resp.json();
         if (data.length > 0) { 
             highlightLayer.clearLayers(); 
+            // Ranh giới cũng không được chặn chuột (interactive: false)
             L.geoJSON(data[0].geojson, { style: { color: "#ff1744", weight: 3, fillOpacity: 0 }, interactive: false }).addTo(highlightLayer); 
             map.fitBounds(L.geoJSON(data[0].geojson).getBounds(), { padding: [20,20] }); 
         }
@@ -112,10 +116,9 @@
         if (document.getElementById('pinToggle').value !== 'on') return;
         const rKm = parseFloat(document.getElementById('radiusInput').value) || 3;
         const m = L.marker(e.latlng, { draggable: true }).addTo(map);
-        const c = L.circle(e.latlng, { radius: rKm * 1000, color: '#2d3436', weight: 1.5, fillOpacity: 0.05 }).addTo(map);
+        const c = L.circle(e.latlng, { radius: rKm * 1000, color: '#2d3436', weight: 1.5, fillOpacity: 0.05, interactive: false }).addTo(map);
         const id = Date.now();
         const wh = { id, marker: m, circle: c, latlng: e.latlng, radius: rKm * 1000, name: "Kho " + (warehouses.length + 1) };
-        
         m.on('dragend', () => { wh.latlng = m.getLatLng(); c.setLatLng(wh.latlng); updateStats(); });
         m.on('contextmenu', () => { map.removeLayer(m); map.removeLayer(c); warehouses = warehouses.filter(w => w.id !== id); updateStats(); });
         warehouses.push(wh); updateStats();
@@ -124,18 +127,12 @@
     async function toggleTable(id) {
         const tbl = document.getElementById(`tbl-${id}`);
         const icon = document.getElementById(`icon-${id}`);
+        tbl.style.display = (tbl.style.display === "table") ? "none" : "table";
+        icon.innerText = (tbl.style.display === "table") ? "▲" : "▼";
         if (tbl.style.display === "table") {
-            tbl.style.display = "none"; icon.innerText = "▼";
-        } else {
-            tbl.style.display = "table"; icon.innerText = "▲";
-            // Tính toán khoảng cách đường bộ khi mở bảng
             const wh = warehouses.find(w => w.id === id);
-            const distCells = tbl.querySelectorAll('.dist-cell');
-            for (let cell of distCells) {
-                if (cell.innerText === "...") {
-                    cell.innerText = await getRouteDist(wh.latlng, { lat: cell.dataset.lat, lng: cell.dataset.lng });
-                }
-            }
+            const cells = tbl.querySelectorAll('.dist-cell');
+            for (let cell of cells) if (cell.innerText === "...") cell.innerText = await getRouteDist(wh.latlng, { lat: cell.dataset.lat, lng: cell.dataset.lng });
         }
     }
 
@@ -145,40 +142,13 @@
         warehouses.forEach(w => {
             const inR = dealers.filter(d => w.latlng.distanceTo(d.latlng) <= w.radius).sort((a,b) => b.ds - a.ds);
             const sumDS = inR.reduce((a, b) => a + b.ds, 0);
-            
-            let rows = inR.map(d => `
-                <tr>
-                    <td>${d.ten}</td>
-                    <td class="sales-val">${d.ds.toLocaleString()}</td>
-                    <td class="dist-cell dist-val" data-lat="${d.lat}" data-lng="${d.lng}">...</td>
-                </tr>
-            `).join('');
-
-            container.innerHTML += `
-                <div class="stats-box">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span style="font-weight:bold; font-size:13px;">${w.name} (${(w.radius/1000).toFixed(1)}km)</span>
-                        <span class="toggle-btn" id="icon-${w.id}" onclick="toggleTable(${w.id})">▼</span>
-                    </div>
-                    <div style="font-size:11px; margin-top:4px;">Tổng DS vùng: <b style="color:#ff1744">${sumDS.toLocaleString()}</b></div>
-                    <table class="dealer-table" id="tbl-${w.id}">
-                        <thead><tr><th>Khách hàng</th><th>Doanh số</th><th>Km</th></tr></thead>
-                        <tbody>${rows || '<tr><td colspan="3">Không có điểm nào</td></tr>'}</tbody>
-                    </table>
-                    <button style="background:#ced4da; border:none; width:100%; margin-top:8px; padding:5px; border-radius:4px; font-size:10px; cursor:pointer;" onclick="deleteWh(${w.id})">XÓA KHO</button>
-                </div>`;
+            let rows = inR.map(d => `<tr><td>${d.ten}</td><td style="color:#d63031; font-weight:bold;">${d.ds.toLocaleString()}</td><td class="dist-cell" data-lat="${d.lat}" data-lng="${d.lng}" style="color:#0984e3; font-weight:bold;">...</td></tr>`).join('');
+            container.innerHTML += `<div class="stats-box"><div style="display:flex; justify-content:space-between; align-items:center;"><span style="font-weight:bold; font-size:13px;">${w.name}</span><span class="toggle-btn" id="icon-${w.id}" onclick="toggleTable(${w.id})">▼</span></div><div style="font-size:11px;">Tổng DS: <b style="color:#ff1744">${sumDS.toLocaleString()}</b></div><table class="dealer-table" id="tbl-${w.id}"><thead><tr><th>Khách hàng</th><th>DS</th><th>Km</th></tr></thead><tbody>${rows || '<tr><td colspan="3">Trống</td></tr>'}</tbody></table><button style="background:#eee; border:none; width:100%; margin-top:5px; padding:3px; cursor:pointer; font-size:10px;" onclick="deleteWh(${w.id})">XÓA</button></div>`;
         });
     }
 
-    function updateAllRadius() {
-        const rKm = parseFloat(document.getElementById('radiusInput').value) || 3;
-        warehouses.forEach(w => { w.radius = rKm * 1000; w.circle.setRadius(rKm * 1000); });
-        updateStats();
-    }
-    function deleteWh(id) { 
-        const wh = warehouses.find(w => w.id === id); 
-        if (wh) { map.removeLayer(wh.marker); map.removeLayer(wh.circle); warehouses = warehouses.filter(x => x.id !== id); updateStats(); } 
-    }
+    function updateAllRadius() { const rKm = parseFloat(document.getElementById('radiusInput').value) || 3; warehouses.forEach(w => { w.radius = rKm * 1000; w.circle.setRadius(rKm * 1000); }); updateStats(); }
+    function deleteWh(id) { const wh = warehouses.find(w => w.id === id); if (wh) { map.removeLayer(wh.marker); map.removeLayer(wh.circle); warehouses = warehouses.filter(x => x.id !== id); updateStats(); } }
 </script>
 </body>
 </html>
