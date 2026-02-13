@@ -3,34 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hệ thống Điều phối V6.6 - Dũng Nguyễn</title>
+    <title>Hệ thống Điều phối V6.7 - Dũng Nguyễn</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; display: flex; height: 100vh; background: #1e272e; }
-        #sidebar { width: 380px; padding: 15px; background: #1e272e; color: #ecf0f1; overflow-y: auto; z-index: 1000; box-shadow: 2px 0 10px rgba(0,0,0,0.5); }
+        #sidebar { width: 400px; padding: 15px; background: #1e272e; color: #ecf0f1; overflow-y: auto; z-index: 1000; box-shadow: 2px 0 10px rgba(0,0,0,0.5); }
         #map { flex-grow: 1; cursor: crosshair; }
         .section { background: #2d3436; border-radius: 8px; margin-bottom: 12px; border: 1px solid #485460; }
         .section-header { background: #34495e; padding: 12px; cursor: pointer; display: flex; justify-content: space-between; font-weight: bold; }
         .section-content { padding: 12px; }
         input, select { width: 100%; padding: 10px; margin-top: 8px; border-radius: 6px; border: none; background: #ecf0f1; color: #2d3436; font-size: 16px; }
         button { width: 100%; padding: 12px; margin-top: 10px; cursor: pointer; background: #e67e22; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 16px; }
-        #zoom-info { position: absolute; bottom: 20px; left: 400px; z-index: 1000; background: rgba(0,0,0,0.8); color: white; padding: 8px 15px; border-radius: 20px; font-weight: bold; pointer-events: none; border: 1px solid #e74c3c; }
-        .stats-box { background: #34495e; padding: 12px; border-radius: 8px; margin-top: 10px; border-left: 5px solid #e74c3c; position: relative; }
-        .btn-del-wh { background: #ff4757; padding: 5px 10px; font-size: 12px; width: auto; margin-top: 8px; cursor: pointer; border-radius: 4px; border:none; color:white; }
-        .leaflet-heatmap-layer { pointer-events: none !important; z-index: 400 !important; }
-        .dealer-tooltip { background: #2c3e50; color: #00d2d3; font-weight: bold; padding: 5px; border-radius: 4px; border: 1px solid #00d2d3; }
+        #zoom-info { position: absolute; bottom: 20px; left: 420px; z-index: 1000; background: rgba(0,0,0,0.8); color: white; padding: 8px 15px; border-radius: 20px; font-weight: bold; pointer-events: none; border: 1px solid #e74c3c; }
+        
+        .stats-box { background: #34495e; padding: 12px; border-radius: 8px; margin-top: 10px; border-left: 5px solid #e74c3c; }
+        .dropdown-toggle { cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .dealer-list { display: none; margin-top: 10px; border-top: 1px solid #555; padding-top: 10px; font-size: 12px; max-height: 300px; overflow-y: auto; }
+        
+        .dealer-row { display: grid; grid-template-columns: 1fr 60px 60px; gap: 5px; padding: 4px 0; border-bottom: 1px solid #444; }
+        .dist-tag { color: #2ecc71; font-weight: bold; text-align: right; }
+        .sales-tag { color: #f1c40f; text-align: right; }
+        
+        .btn-del-wh { background: #ff4757; padding: 4px 8px; font-size: 11px; width: auto; margin-top: 10px; cursor: pointer; border:none; color:white; border-radius: 4px; }
+        .leaflet-heatmap-layer { pointer-events: none !important; }
     </style>
 </head>
 <body>
 
 <div id="sidebar">
-    <h2 style="color: #e74c3c; margin: 0 0 15px 0;">ĐIỀU PHỐI V6.6</h2>
+    <h2 style="color: #e74c3c; margin: 0 0 15px 0;">ĐIỀU PHỐI V6.7</h2>
     <div class="section">
         <div class="section-header" onclick="toggleSec(this)">1. Điều khiển & Tìm kiếm <span>[−]</span></div>
         <div class="section-content">
             <select id="heatToggle" onchange="toggleHeatLayer()"><option value="on">BẬT Cộng hưởng nhiệt</option><option value="off">TẮT nhiệt</option></select>
             <input type="text" id="areaSearchInput" placeholder="Vd: Quận Hoàng Mai, Hà Nội" style="margin-top:15px;">
-            <button onclick="searchArea()" style="background:#3498db;">🔍 Tìm & Chỉ lấy viền</button>
+            <button onclick="searchArea()" style="background:#3498db;">🔍 Tìm & Bo viền</button>
             <div style="display:flex; align-items:center; justify-content:space-between; margin-top:15px;">
                 <span>Cắm điểm đề xuất:</span>
                 <select id="pinToggle" style="width:100px;"><option value="off">TẮT</option><option value="on">BẬT</option></select>
@@ -76,17 +83,23 @@
             const data = await resp.json();
             if (data && data.length > 0) {
                 highlightLayer.clearLayers();
-                const geoLayer = L.geoJSON(data[0].geojson, { 
-                    style: { 
-                        color: "#3498db", 
-                        weight: 4, 
-                        fillOpacity: 0 // KHÔNG PHỦ MÀU BÊN TRONG
-                    }, 
-                    interactive: false 
-                }).addTo(highlightLayer);
+                const geoLayer = L.geoJSON(data[0].geojson, { style: { color: "#3498db", weight: 4, fillOpacity: 0 }, interactive: false }).addTo(highlightLayer);
                 map.fitBounds(geoLayer.getBounds(), { padding: [20, 20] });
             }
         } catch (e) { console.error(e); }
+    }
+
+    // Hàm lấy quãng đường từ OSRM
+    async function getRouteDistance(start, end) {
+        try {
+            const url = `https://router.project-osrm.org/route/v1/driving/${start.lng},${start.lat};${end.lng},${end.lat}?overview=false`;
+            const resp = await fetch(url);
+            const data = await resp.json();
+            if (data.code === 'Ok') {
+                return (data.routes[0].distance / 1000).toFixed(1) + "km";
+            }
+            return "N/A";
+        } catch (e) { return "Err"; }
     }
 
     document.getElementById('excelFile').addEventListener('change', function(e) {
@@ -107,8 +120,8 @@
                 const lat = parseFloat(row[4]); const lng = parseFloat(row[3]);
                 if (!isNaN(lat) && !isNaN(lng)) {
                     const marker = L.circleMarker([lat, lng], { color: '#2d3436', radius: 4, fillOpacity: 0.8, fillColor: '#2980b9', interactive: true }).addTo(dealerLayer);
-                    marker.bindTooltip(`<b>${row[1]}</b><br>DS: ${ds.toLocaleString()}`, { sticky: true, className: 'dealer-tooltip' });
-                    dealers.push({ latlng: L.latLng(lat, lng), ds: ds });
+                    marker.bindTooltip(`<b>${row[1]}</b><br>DS: ${ds.toLocaleString()}`, { sticky: true });
+                    dealers.push({ latlng: L.latLng(lat, lng), ds: ds, ma: row[0], ten: row[1] });
                     if (ds > 0) {
                         let intensity = Math.pow(ds / maxSales, 0.7);
                         heatPoints.push([lat, lng, intensity]);
@@ -126,12 +139,8 @@
         if (!heatLayer) return;
         const z = map.getZoom();
         document.getElementById('zoom-level').innerText = z.toFixed(1);
-        let r, b;
-        if (z >= 15) { r = 95; b = 40; } 
-        else if (z >= 13) { r = 75; b = 25; } 
-        else if (z >= 11) { r = 55; b = 20; } 
-        else { r = 60 + (11 - z) * 15; b = 25; }
-        heatLayer.setOptions({ radius: r, blur: b });
+        let r = (z >= 15) ? 95 : (z >= 13 ? 75 : (z >= 11 ? 55 : 60 + (11-z)*15));
+        heatLayer.setOptions({ radius: r, blur: (z >= 15 ? 45 : 20) });
     }
     map.on('zoomend', updateHeatEffect);
 
@@ -147,7 +156,7 @@
         const circle = L.circle(e.latlng, { color: '#e74c3c', radius: 3000, fillOpacity: 0.1, interactive: false }).addTo(map);
         const wh = { id, marker, circle, latlng: e.latlng, name: "Kho " + (warehouses.length + 1) };
         marker.on('contextmenu', () => deleteWh(id));
-        marker.on('drag', () => { wh.latlng = marker.getLatLng(); circle.setLatLng(wh.latlng); updateAllStats(); });
+        marker.on('dragend', () => { wh.latlng = marker.getLatLng(); circle.setLatLng(wh.latlng); updateAllStats(); });
         warehouses.push(wh); updateAllStats();
     });
 
@@ -156,13 +165,59 @@
         if (wh) { map.removeLayer(wh.marker); map.removeLayer(wh.circle); warehouses = warehouses.filter(w => w.id !== id); updateAllStats(); }
     }
 
+    async function toggleDealerList(id) {
+        const listDiv = document.getElementById(`list-${id}`);
+        const icon = document.getElementById(`icon-${id}`);
+        if (listDiv.style.display === "block") {
+            listDiv.style.display = "none";
+            icon.innerText = "▼";
+        } else {
+            listDiv.style.display = "block";
+            icon.innerText = "▲";
+            
+            // Tính quãng đường cho các đại lý chưa có dữ liệu km
+            const wh = warehouses.find(w => w.id === id);
+            const items = listDiv.querySelectorAll('.dist-val');
+            for (let item of items) {
+                if (item.innerText === "...") {
+                    const dLat = item.dataset.lat;
+                    const dLng = item.dataset.lng;
+                    item.innerText = await getRouteDistance(wh.latlng, {lat: dLat, lng: dLng});
+                }
+            }
+        }
+    }
+
     function updateAllStats() {
         const div = document.getElementById('warehouse-list');
-        div.innerHTML = '<strong style="display:block; margin:10px 0;">Kho đề xuất:</strong>';
+        div.innerHTML = '<strong style="display:block; margin:10px 0;">Danh sách kho:</strong>';
         warehouses.forEach(w => {
             const inRange = dealers.filter(d => w.latlng.distanceTo(d.latlng) <= 3000);
             const sumSales = inRange.reduce((s, d) => s + d.ds, 0);
-            div.innerHTML += `<div class="stats-box"><b>${w.name}</b><br>KH: ${inRange.length} | DS: <b style="color:#f1c40f">${sumSales.toLocaleString()}</b><br><button class="btn-del-wh" onclick="deleteWh(${w.id})">Xóa kho</button></div>`;
+            
+            const rows = inRange.map(d => `
+                <div class="dealer-row">
+                    <span title="${d.ten}">${d.ma}</span>
+                    <span class="sales-tag">${d.ds.toLocaleString()}</span>
+                    <span class="dist-tag dist-val" data-lat="${d.latlng.lat}" data-lng="${d.latlng.lng}">...</span>
+                </div>
+            `).join('');
+
+            div.innerHTML += `
+                <div class="stats-box">
+                    <div class="dropdown-toggle" onclick="toggleDealerList(${w.id})">
+                        <b>${w.name} (3km)</b>
+                        <span id="icon-${w.id}">▼</span>
+                    </div>
+                    <div style="font-size:12px; margin-top:5px; color:#bdc3c7;">Đại lý: ${inRange.length} | Tổng DS: <b style="color:#f1c40f">${sumSales.toLocaleString()}</b></div>
+                    <div class="dealer-list" id="list-${w.id}">
+                        <div class="dealer-row" style="font-weight:bold; border-bottom:1px solid #777;">
+                            <span>Mã KH</span><span>DS</span><span>Lộ trình</span>
+                        </div>
+                        ${rows || '<div style="padding:5px">Không có đại lý trong bán kính</div>'}
+                        <button class="btn-del-wh" onclick="deleteWh(${w.id})">Xóa kho</button>
+                    </div>
+                </div>`;
         });
     }
 </script>
