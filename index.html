@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Điều phối V10.3 - Dũng Nguyễn</title>
+    <title>Điều phối V10.4 - Dũng Nguyễn</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background: #1e272e; overflow: hidden; }
@@ -35,9 +35,8 @@
         .dealer-list { display: none; margin-top: 8px; border-top: 1px solid #555; padding-top: 8px; }
         .dealer-row { display: grid; grid-template-columns: 1fr 75px 55px; gap: 4px; padding: 4px 0; border-bottom: 1px solid #444; font-size: 11px; align-items: center; }
         .sales-tag { color: #f1c40f; text-align: right; font-weight: bold; }
-        .dist-tag { color: #2ecc71; text-align: right; font-weight: bold; }
         
-        .leaflet-heatmap-layer, .leaflet-interactivePath { pointer-events: none !important; }
+        .leaflet-heatmap-layer { pointer-events: none !important; opacity: 0.9 !important; }
         .leaflet-marker-pane { z-index: 650 !important; }
     </style>
 </head>
@@ -45,7 +44,7 @@
 
 <div id="login-overlay">
     <div class="login-box">
-        <h2>HỆ THỐNG V10.3</h2>
+        <h2>HỆ THỐNG V10.4</h2>
         <input type="text" id="username" placeholder="Tên đăng nhập">
         <input type="password" id="password" placeholder="Mật khẩu">
         <button onclick="checkLogin()">ĐĂNG NHẬP</button>
@@ -81,7 +80,7 @@
         <div id="warehouse-list"></div>
 
         <div class="card">
-            <div class="card-title">🔄 DỮ LIỆU (ÍT DÙNG)</div>
+            <div class="card-title">🔄 DỮ LIỆU & HIỂN THỊ</div>
             <button class="action-btn btn-refresh" onclick="loadDataOnline()">LÀM MỚI TỪ SHEETS</button>
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                 <select id="pointToggle" onchange="togglePointLayer()"><option value="on">ĐIỂM: BẬT</option><option value="off">ĐIỂM: TẮT</option></select>
@@ -129,11 +128,26 @@
                     m.bindTooltip(`<b>${col[1]}</b><br>DS: ${ds.toLocaleString()}`, { sticky: true });
                     dealers.push({ latlng: L.latLng(lat, lng), ds, ten: col[1], marker: m });
                     if (document.getElementById('pointToggle').value === 'on') m.addTo(dealerLayer);
-                    if (ds > 0) hp.push([lat, lng, Math.min(0.4 + (ds/500000000)*0.4, 1.2)]);
+                    // CẬP NHẬT CƯỜNG ĐỘ GẮT HƠN
+                    if (ds > 0) {
+                        let intensity = 0.5 + (ds / 300000000) * 0.5; // Đạt đỉnh đỏ nhanh hơn
+                        hp.push([lat, lng, Math.min(intensity, 1.5)]);
+                    }
                 }
             });
             if (heatLayer) heatLayerGroup.removeLayer(heatLayer);
-            heatLayer = L.heatLayer(hp, { radius: 95, blur: 30, max: 1.0, gradient: { 0.2: '#ff9f43', 0.5: '#ff4757', 0.8: '#b33939', 1.0: '#5e0000' } });
+            // THIẾT LẬP GRADIENT SIÊU TƯƠNG PHẢN
+            heatLayer = L.heatLayer(hp, { 
+                radius: 80, 
+                blur: 18, // Giảm blur để màu sắc cô đọng, không bị mờ
+                max: 1.0, 
+                gradient: { 
+                    0.2: '#ffd32a', // Vàng chanh sáng
+                    0.4: '#ff3f34', // Đỏ cam rực
+                    0.7: '#b71540', // Đỏ thẫm
+                    1.0: '#3e0e0e'  // Đỏ đen (Đặc quánh)
+                } 
+            });
             if (document.getElementById('heatToggle').value === 'on') heatLayer.addTo(heatLayerGroup);
         } catch (e) { alert("Lỗi tải!"); }
     }
@@ -162,7 +176,11 @@
 
     map.on('zoomend', () => {
         const z = map.getZoom(); document.getElementById('zoom-level').innerText = z.toFixed(1);
-        if (heatLayer) heatLayer.setOptions({ radius: (z >= 13) ? 105 : (z >= 11 ? 85 : 60) });
+        if (heatLayer) {
+            // Tối ưu bán kính cho các mốc zoom quan trọng
+            let r = (z >= 14) ? 90 : (z >= 12.5 ? 75 : 55);
+            heatLayer.setOptions({ radius: r, blur: (z >= 13 ? 25 : 18) });
+        }
     });
 
     map.on('click', e => {
@@ -225,7 +243,7 @@
                     <div onclick="toggleList(${w.id})" style="cursor:pointer; font-weight:bold; display:flex; justify-content:space-between; font-size:13px;">
                         ${w.name} (${(w.radius/1000).toFixed(1)}km) <span>▼</span>
                     </div>
-                    <div style="font-size:11px; margin-top:3px; color:#bdc3c7;">KH: ${inR.length} | DS: <b style="color:#f1c40f">${sum.toLocaleString()}</b></div>
+                    <div style="font-size:11px; margin-top:3px; color:#bdc3c7;">KH: ${inR.length} | Tổng DS: <b style="color:#f1c40f">${sum.toLocaleString()}</b></div>
                     <div class="dealer-list" id="list-${w.id}">
                         ${rows || '<div style="padding:5px;">Trống</div>'}
                         <button style="background:#ff4757; color:white; padding:5px; margin-top:8px; width:100%; border:none; border-radius:4px; font-weight:bold;" onclick="deleteWh(${w.id})">XÓA</button>
