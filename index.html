@@ -188,16 +188,17 @@
         }
     }
 
-    function updateAllStats() {
+   function updateAllStats() {
         const div = document.getElementById('warehouse-list');
         div.innerHTML = '<strong style="display:block; margin:10px 0;">Danh sách kho:</strong>';
         warehouses.forEach(w => {
             const inRange = dealers.filter(d => w.latlng.distanceTo(d.latlng) <= 3000);
             const sumSales = inRange.reduce((s, d) => s + d.ds, 0);
             
+            // CHỖ SỬA TẠI ĐÂY: Thay d.ma bằng d.ten
             const rows = inRange.map(d => `
                 <div class="dealer-row">
-                    <span title="${d.ten}">${d.ma}</span>
+                    <span title="Mã KH: ${d.ma}" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${d.ten}</span>
                     <span class="sales-tag">${d.ds.toLocaleString()}</span>
                     <span class="dist-tag dist-val" data-lat="${d.latlng.lat}" data-lng="${d.latlng.lng}">...</span>
                 </div>
@@ -212,7 +213,7 @@
                     <div style="font-size:12px; margin-top:5px; color:#bdc3c7;">Đại lý: ${inRange.length} | Tổng DS: <b style="color:#f1c40f">${sumSales.toLocaleString()}</b></div>
                     <div class="dealer-list" id="list-${w.id}">
                         <div class="dealer-row" style="font-weight:bold; border-bottom:1px solid #777;">
-                            <span>Mã KH</span><span>DS</span><span>Lộ trình</span>
+                            <span>Tên Khách Hàng</span><span>DS</span><span>Lộ trình</span>
                         </div>
                         ${rows || '<div style="padding:5px">Không có đại lý trong bán kính</div>'}
                         <button class="btn-del-wh" onclick="deleteWh(${w.id})">Xóa kho</button>
@@ -220,6 +221,8 @@
                 </div>`;
         });
     }
+    }
 </script>
 </body>
 </html>
+
