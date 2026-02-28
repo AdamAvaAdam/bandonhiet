@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Điều phối V12.9 - Fix Interaction</title>
+    <title>Điều phối V13.0 - Thu gọn nhóm kho</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root { --primary: #ff1744; --dark: #2d3436; --bg: #f8f9fa; --teal: #00b894; }
@@ -38,7 +38,18 @@
             #sidebar.hidden ~ #floating-toggle { left: 20px; }
         }
 
-        .section-title { font-size: 11px; font-weight: 900; color: #636e72; text-transform: uppercase; margin: 15px 0 8px; border-bottom: 1px solid #eee; padding-bottom: 4px; }
+        /* Group Header with Collapse Arrow */
+        .section-header { 
+            display: flex; justify-content: space-between; align-items: center;
+            background: #f1f2f6; padding: 10px; border-radius: 8px;
+            cursor: pointer; margin: 15px 0 8px; user-select: none;
+        }
+        .section-title { font-size: 11px; font-weight: 900; color: #636e72; text-transform: uppercase; }
+        .collapse-arrow { transition: transform 0.3s; font-weight: bold; }
+        .collapsed .collapse-arrow { transform: rotate(-90deg); }
+        .group-content { overflow: hidden; transition: max-height 0.3s ease-out; }
+        .collapsed-content { display: none; }
+
         .card { background: #fffaf0; border-radius: 12px; padding: 12px; margin-bottom: 12px; border: 1px solid #f3e5ab; }
         .stats-box { background: #ffffff; padding: 10px; border-radius: 10px; margin-top: 8px; border-left: 5px solid var(--dark); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         .radius-inline-input { width: 50px; padding: 2px 4px; border: 1px solid #ddd; border-radius: 4px; font-size: 11px; font-weight: bold; text-align: center; margin-left: 5px; color: var(--primary); }
@@ -54,7 +65,7 @@
 
 <div id="login-overlay">
     <div class="login-box">
-        <h2 style="color:var(--primary)">ĐIỀU PHỐI V12.9</h2>
+        <h2 style="color:var(--primary)">ĐIỀU PHỐI V13.0</h2>
         <input type="text" id="username" placeholder="User" value="admin">
         <input type="password" id="password" placeholder="Pass" value="HA5566">
         <button onclick="checkLogin()">VÀO HỆ THỐNG</button>
@@ -77,11 +88,21 @@
             <select id="pinToggle" style="width:100%; padding:10px; border-radius:8px;"><option value="off">CHẾ ĐỘ XEM</option><option value="on">CHẾ ĐỘ CẮM KHO</option></select>
         </div>
 
-        <div class="section-title">🏭 Hệ thống kho cố định</div>
-        <div id="company-warehouse-list"></div>
+        <div class="section-header" onclick="toggleGroup('company-group')">
+            <span class="section-title">🏭 Hệ thống kho cố định</span>
+            <span id="arrow-company-group" class="collapse-arrow">▼</span>
+        </div>
+        <div id="company-group" class="group-content">
+            <div id="company-warehouse-list"></div>
+        </div>
 
-        <div class="section-title">📍 Kho cắm điều phối</div>
-        <div id="user-warehouse-list"></div>
+        <div class="section-header" onclick="toggleGroup('user-group')">
+            <span class="section-title">📍 Kho cắm điều phối</span>
+            <span id="arrow-user-group" class="collapse-arrow">▼</span>
+        </div>
+        <div id="user-group" class="group-content">
+            <div id="user-warehouse-list"></div>
+        </div>
         
         <div style="margin-top:20px;">
             <button onclick="loadDataOnline()" style="width:100%; padding:12px; background:var(--teal); color:white; border:none; border-radius:8px; font-weight:bold; margin-bottom:8px;">LÀM MỚI DỮ LIỆU</button>
@@ -123,10 +144,26 @@
         initWarehouses();
     }
 
+    // Toggle Thu gọn/Mở rộng
+    function toggleGroup(groupId) {
+        const content = document.getElementById(groupId);
+        const arrow = document.getElementById('arrow-' + groupId);
+        const header = arrow.parentElement;
+        
+        if (content.style.display === "none") {
+            content.style.display = "block";
+            header.classList.remove('collapsed');
+            arrow.innerText = "▼";
+        } else {
+            content.style.display = "none";
+            header.classList.add('collapsed');
+            arrow.innerText = "◀";
+        }
+    }
+
     const map = L.map('map', { zoomSnap: 0.1, zoomControl: false }).setView([20.8, 106.0], 9);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
 
-    // Lớp hiển thị cao nhất để click xuyên qua được tất cả
     map.createPane('paneDealers');
     map.getPane('paneDealers').style.zIndex = 700;
 
@@ -150,11 +187,7 @@
                 let lat = parseFloat(col[4].toString().replace(',', '.')), lng = parseFloat(col[3].toString().replace(',', '.'));
                 if (!isNaN(lat) && !isNaN(lng)) {
                     const color = getRankColor(ds);
-                    const m = L.circleMarker([lat, lng], { 
-                        radius: ds > 0 ? 5 : 3, 
-                        color: color, weight: 1, fillOpacity: 0.9, fillColor: color,
-                        pane: 'paneDealers' // Ép marker lên lớp trên cùng
-                    });
+                    const m = L.circleMarker([lat, lng], { radius: ds > 0 ? 5 : 3, color: color, weight: 1, fillOpacity: 0.9, fillColor: color, pane: 'paneDealers' });
                     m.bindTooltip(`<b>${col[1]}</b><br>${ds.toLocaleString()}đ`, { sticky: true });
                     dealers.push({ latlng: L.latLng(lat, lng), ds, ten: col[1], lat, lng });
                     m.addTo(dealerLayer);
@@ -189,12 +222,7 @@
             icon: L.divIcon({ className: '', html: `<div class="wh-label" style="background:${color}">${name}</div>`, iconSize: null })
         }).addTo(map);
 
-        const c = L.circle(latlng, { 
-            radius: rM, 
-            color: '#2d3436', weight: 2, fillOpacity: 0.15, fillColor: '#1e272e',
-            interactive: false // Không cản trở click đại lý
-        }).addTo(map);
-
+        const c = L.circle(latlng, { radius: rM, color: '#2d3436', weight: 2, fillOpacity: 0.15, fillColor: '#1e272e', interactive: false }).addTo(map);
         const wh = { id, marker: m, circle: c, latlng, radius: rM, name, isCompany };
         m.on('dragend', () => { wh.latlng = m.getLatLng(); c.setLatLng(wh.latlng); updateStats(); saveUserWarehouses(); });
         warehouses.push(wh);
@@ -271,11 +299,7 @@
         const data = await resp.json();
         if (data.length > 0) { 
             highlightLayer.clearLayers(); 
-            // FIX CHÍNH: Thêm interactive: false để không cản trở click xuyên qua lớp viền
-            L.geoJSON(data[0].geojson, { 
-                style: { color: '#ff1744', weight: 3, fillOpacity: 0 },
-                interactive: false 
-            }).addTo(highlightLayer); 
+            L.geoJSON(data[0].geojson, { style: { color: '#ff1744', weight: 3, fillOpacity: 0 }, interactive: false }).addTo(highlightLayer); 
             map.fitBounds(L.geoJSON(data[0].geojson).getBounds(), { padding: [30,30] }); 
         }
     }
