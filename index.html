@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Điều phối V12.6 - Hệ thống Kho & Cấp độ Doanh số</title>
+    <title>Điều phối V12.6 - Full Update</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root { --primary: #ff1744; --dark: #2d3436; --bg: #f8f9fa; --teal: #00b894; --gray: #b2bec3; }
@@ -52,9 +52,8 @@
         .dealer-table th { text-align: left; border-bottom: 1px solid #eee; padding: 5px; color: #666; }
         .dealer-table td { padding: 8px 5px; border-top: 1px solid #f9f9f9; }
         
-        .leaflet-heatmap-layer { pointer-events: none !important; opacity: 0.8 !important; mix-blend-mode: multiply; }
-        
-        /* Tag kho luôn hiển thị */
+        /* Tooltip & Heatmap Style */
+        .leaflet-heatmap-layer { pointer-events: none !important; opacity: 0.8 !important; }
         .warehouse-tag div { transform: translate(-50%, -120%); pointer-events: none; }
     </style>
 </head>
@@ -87,7 +86,7 @@
                 <select id="pinToggle"><option value="off">XEM</option><option value="on">CẮM KHO</option></select>
                 <input type="number" id="radiusInput" value="3" step="0.5" oninput="updateAllRadius()">
             </div>
-            <p style="font-size: 10px; color: #666; margin: 5px 0 0;">*Click đúp vào kho để chỉnh bán kính riêng.</p>
+            <p style="font-size: 10px; color: #d63031; margin-top: 8px; font-weight: bold;">* Click đúp vào kho để chỉnh bán kính riêng.</p>
         </div>
 
         <div id="warehouse-list"></div>
@@ -103,7 +102,7 @@
 <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 
 <script>
-    // --- DATA KHO CÔNG TY ---
+    // --- DANH SÁCH KHO CÔNG TY CỐ ĐỊNH ---
     const COMPANY_WAREHOUSES = [
         { id: 'HD', name: 'Kho Hải Dương', lat: 20.935218, lng: 106.263725 },
         { id: '021', name: 'Kho hàng Bồ Đề', lat: 21.032984, lng: 105.868785 },
@@ -117,42 +116,32 @@
         { id: 'Hy', name: 'Kho Hưng Yên', lat: 20.76934, lng: 106.051002 }
     ];
 
-    // --- LOGIN ENGINE ---
-    window.onload = function() {
-        if (localStorage.getItem('isLogged') === 'true') enterApp();
-    };
-
+    // --- QUẢN LÝ ĐĂNG NHẬP ---
     function checkLogin() {
         const u = document.getElementById('username').value, p = document.getElementById('password').value;
-        if (u === 'admin' && p === 'HA5566') {
-            localStorage.setItem('isLogged', 'true');
-            enterApp();
-        } else {
-            document.getElementById('error-text').style.display = 'block';
-        }
+        if (u === 'admin' && p === 'HA5566') { localStorage.setItem('isLogged', 'true'); enterApp(); }
+        else { document.getElementById('error-text').style.display = 'block'; }
     }
-
-    function logout() {
-        if(confirm("Xóa phiên đăng nhập?")) { localStorage.removeItem('isLogged'); location.reload(); }
-    }
+    function logout() { if(confirm("Đăng xuất?")) { localStorage.removeItem('isLogged'); location.reload(); } }
+    window.onload = function() { if (localStorage.getItem('isLogged') === 'true') enterApp(); };
 
     function enterApp() {
         document.getElementById('login-overlay').style.display = 'none';
         document.getElementById('main-app').style.display = 'flex';
         setTimeout(() => { map.invalidateSize(); }, 400);
         loadDataOnline();
-        initSystemWarehouses(); // Load kho công ty
-        loadSavedWarehouses();  // Load kho người dùng cắm thêm
+        initSystemWarehouses();
+        loadSavedWarehouses();
     }
 
-    // --- MAP ENGINE ---
-    const map = L.map('map', { zoomSnap: 0.1, zoomControl: false }).setView([20.8, 105.8], 9);
+    // --- KHỞI TẠO BẢN ĐỒ ---
+    const map = L.map('map', { zoomSnap: 0.1, zoomControl: false }).setView([20.8, 106.0], 9);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
 
     let dealers = [], warehouses = [], highlightLayer = L.layerGroup().addTo(map), 
         heatLayerGroup = L.layerGroup().addTo(map), dealerLayer = L.layerGroup().addTo(map), heatLayer = null;
 
-    // Phân cấp màu sắc theo doanh số
+    // PHÂN MÀU CẤP ĐỘ (Xám -> Xanh -> Tím -> Cam -> Đỏ)
     function getRankColor(ds) {
         if (ds <= 0) return '#b2bec3';          // Xám
         if (ds < 500000000) return '#00b894';    // Xanh lá
@@ -161,6 +150,7 @@
         return '#ff1744';                       // Đỏ
     }
 
+    // --- XỬ LÝ DỮ LIỆU ---
     async function loadDataOnline() {
         const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSqx48yei68qBJFSiHZzxCeGO0df4IDE6md9hzu7TUv5GjgOvU9yIpm4lEN6HJw9zJuek4YYMj8XAyn/pub?gid=0&single=true&output=csv";
         try {
@@ -177,23 +167,21 @@
                 
                 if (!isNaN(lat) && !isNaN(lng)) {
                     const color = getRankColor(ds);
-                    const m = L.circleMarker([lat, lng], { 
-                        radius: ds > 0 ? 4 : 2.5, 
-                        color: color, weight: 1, fillOpacity: 0.8, fillColor: color 
-                    });
+                    const m = L.circleMarker([lat, lng], { radius: ds > 0 ? 4 : 2.5, color: color, weight: 1, fillOpacity: 0.8, fillColor: color });
                     m.bindTooltip(`<b>${col[1]}</b><br>DS: ${ds.toLocaleString()}đ`, { sticky: true });
                     dealers.push({ latlng: L.latLng(lat, lng), ds, ten: col[1], lat, lng, marker: m });
                     m.addTo(dealerLayer);
-                    if (ds > 0) hp.push([lat, lng, Math.min(ds / 500000000, 1)]);
+                    if (ds > 0) hp.push([lat, lng, Math.min(ds / 1000000000, 1)]);
                 }
             });
 
             if (heatLayer) heatLayerGroup.removeLayer(heatLayer);
-            heatLayer = L.heatLayer(hp, { radius: 35, blur: 20, max: 0.8, gradient: { 0.4: 'blue', 0.6: 'lime', 0.8: 'yellow', 1.0: 'red'} }).addTo(heatLayerGroup);
+            heatLayer = L.heatLayer(hp, { radius: 30, blur: 20, max: 0.7 }).addTo(heatLayerGroup);
             updateStats();
-        } catch (e) { console.error("Sync failed"); }
+        } catch (e) { console.error("Data sync failed"); }
     }
 
+    // --- QUẢN LÝ KHO ---
     function initSystemWarehouses() {
         const r = parseFloat(document.getElementById('radiusInput').value) || 3;
         COMPANY_WAREHOUSES.forEach(w => addWarehouse(L.latLng(w.lat, w.lng), r, w.name, true));
@@ -221,14 +209,42 @@
         const c = L.circle(latlng, { radius: rM, color: isCompany ? '#2d3436' : '#ff1744', weight: 2, fillOpacity: 0.05 }).addTo(map);
         const wh = { id, marker: m, circle: c, latlng, radius: rM, name, isCompany };
         
-        m.on('dragend', () => { wh.latlng = m.getLatLng(); c.setLatLng(wh.latlng); updateStats(); if(!isCompany) saveWarehouses(); });
-        m.on('dblclick', () => {
-            const newR = prompt(`Chỉnh bán kính cho ${name} (km):`, wh.radius/1000);
-            if(newR) { wh.radius = parseFloat(newR)*1000; c.setRadius(wh.radius); updateStats(); if(!isCompany) saveWarehouses(); }
+        // SỰ KIỆN CHỈNH BÁN KÍNH RIÊNG (CLICK ĐÚP)
+        m.on('dblclick', (ev) => {
+            L.DomEvent.stopPropagation(ev);
+            const newR = prompt(`Thiết lập bán kính mới cho ${name} (KM):`, wh.radius/1000);
+            if(newR && !isNaN(newR)) {
+                wh.radius = parseFloat(newR) * 1000;
+                c.setRadius(wh.radius);
+                updateStats();
+                if(!isCompany) saveWarehouses();
+            }
         });
+
+        m.on('dragend', () => { wh.latlng = m.getLatLng(); c.setLatLng(wh.latlng); updateStats(); if(!isCompany) saveWarehouses(); });
         m.on('contextmenu', () => { if(!isCompany) { map.removeLayer(m); map.removeLayer(c); warehouses = warehouses.filter(w => w.id !== id); updateStats(); saveWarehouses(); } });
 
         warehouses.push(wh); updateStats();
+    }
+
+    // --- PHÂN TÍCH VÀ THỐNG KÊ ---
+    function updateStats() {
+        const container = document.getElementById('warehouse-list');
+        container.innerHTML = '<strong style="color:var(--dark); font-size:11px; margin:10px 0; display:block;">PHÂN TÍCH VÙNG PHỦ:</strong>';
+        warehouses.forEach(w => {
+            const inR = dealers.filter(d => w.latlng.distanceTo(d.latlng) <= w.radius).sort((a,b) => b.ds - a.ds);
+            const sumDS = inR.reduce((a, b) => a + b.ds, 0);
+            let rows = inR.map(d => `<tr><td>${d.ten}</td><td style="color:var(--primary); font-weight:bold;">${sumDS > 0 ? ((d.ds/sumDS)*100).toFixed(1) : 0}%</td><td class="dist-cell" data-lat="${d.lat}" data-lng="${d.lng}" style="color:var(--teal); font-weight:bold;">...</td></tr>`).join('');
+            
+            container.innerHTML += `<div class="stats-box" style="border-left-color: ${w.isCompany ? '#2d3436' : '#ff1744'}">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-weight:800; font-size:13px;">${w.name} (${w.radius/1000}km)</span>
+                    <span style="cursor:pointer; color:var(--primary); font-size:20px;" onclick="toggleTable('${w.id}')">▾</span>
+                </div>
+                <div style="font-size:11px; margin-top:5px;">Tổng doanh số: <b style="color:#d63031">${sumDS.toLocaleString()}đ</b></div>
+                <table class="dealer-table" id="tbl-${w.id}"><thead><tr><th>Khách</th><th>Tỷ trọng</th><th>Km</th></tr></thead><tbody>${rows || '<tr><td colspan="3">Trống</td></tr>'}</tbody></table>
+            </div>`;
+        });
     }
 
     async function toggleTable(id) {
@@ -244,26 +260,7 @@
         }
     }
 
-    function updateStats() {
-        const container = document.getElementById('warehouse-list');
-        container.innerHTML = '<strong style="color:var(--dark); font-size:11px; margin:10px 0; display:block;">PHÂN TÍCH VÙNG PHỦ:</strong>';
-        warehouses.forEach(w => {
-            const inR = dealers.filter(d => w.latlng.distanceTo(d.latlng) <= w.radius).sort((a,b) => b.ds - a.ds);
-            const sumDS = inR.reduce((a, b) => a + b.ds, 0);
-            let rows = inR.map(d => `<tr><td>${d.ten}</td><td style="color:var(--primary); font-weight:bold;">${sumDS > 0 ? ((d.ds/sumDS)*100).toFixed(1) : 0}%</td><td class="dist-cell" data-lat="${d.lat}" data-lng="${d.lng}" style="color:var(--teal); font-weight:bold;">...</td></tr>`).join('');
-            
-            container.innerHTML += `<div class="stats-box" style="border-left-color: ${w.isCompany ? '#2d3436' : '#ff1744'}">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <span style="font-weight:800; font-size:13px;">${w.name} (${w.radius/1000}km)</span>
-                    <span style="cursor:pointer; color:var(--primary); font-size:20px;" onclick="toggleTable('${w.id}')">▾</span>
-                </div>
-                <div style="font-size:11px; margin-top:5px;">Tổng DS vùng: <b style="color:#d63031">${sumDS.toLocaleString()}đ</b></div>
-                <table class="dealer-table" id="tbl-${w.id}"><thead><tr><th>Khách</th><th>Tỷ trọng</th><th>Km</th></tr></thead><tbody>${rows || '<tr><td colspan="3">Trống</td></tr>'}</tbody></table>
-            </div>`;
-        });
-    }
-
-    // --- UTILS ---
+    // --- CÔNG CỤ HỖ TRỢ ---
     function saveWarehouses() {
         const data = warehouses.filter(w => !w.isCompany).map(w => ({ lat: w.latlng.lat, lng: w.latlng.lng, radius: w.radius/1000, name: w.name }));
         localStorage.setItem('savedWarehouses', JSON.stringify(data));
