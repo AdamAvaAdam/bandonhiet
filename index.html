@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Điều phối V12.8 - Pro Edition</title>
+    <title>Điều phối V12.9 - Fix Interaction</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        :root { --primary: #ff1744; --dark: #2d3436; --bg: #f8f9fa; --teal: #00b894; --blue: #0984e3; }
+        :root { --primary: #ff1744; --dark: #2d3436; --bg: #f8f9fa; --teal: #00b894; }
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
         
         #login-overlay { position: fixed; inset: 0; background: var(--dark); display: flex; align-items: center; justify-content: center; z-index: 10000; }
@@ -41,24 +41,20 @@
         .section-title { font-size: 11px; font-weight: 900; color: #636e72; text-transform: uppercase; margin: 15px 0 8px; border-bottom: 1px solid #eee; padding-bottom: 4px; }
         .card { background: #fffaf0; border-radius: 12px; padding: 12px; margin-bottom: 12px; border: 1px solid #f3e5ab; }
         .stats-box { background: #ffffff; padding: 10px; border-radius: 10px; margin-top: 8px; border-left: 5px solid var(--dark); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        
         .radius-inline-input { width: 50px; padding: 2px 4px; border: 1px solid #ddd; border-radius: 4px; font-size: 11px; font-weight: bold; text-align: center; margin-left: 5px; color: var(--primary); }
         
         .dealer-table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 11px; display: none; }
         .dealer-table th { text-align: left; border-bottom: 1px solid #eee; padding: 4px; }
         .dealer-table td { padding: 6px 4px; border-top: 1px solid #f9f9f9; }
 
-        .wh-label { display: inline-block; white-space: nowrap; padding: 3px 8px; border-radius: 4px; color: white; font-size: 11px; font-weight: bold; border: 1.5px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); transform: translate(-50%, -140%); }
-        
-        /* Đảm bảo Tooltip khách hàng hiện lên trên cùng */
-        .leaflet-tooltip-pane { z-index: 9999 !important; }
+        .wh-label { display: inline-block; white-space: nowrap; padding: 3px 8px; border-radius: 4px; color: white; font-size: 11px; font-weight: bold; border: 1.5px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); transform: translate(-50%, -140%); pointer-events: none; }
     </style>
 </head>
 <body>
 
 <div id="login-overlay">
     <div class="login-box">
-        <h2 style="color:var(--primary)">ĐIỀU PHỐI V12.8</h2>
+        <h2 style="color:var(--primary)">ĐIỀU PHỐI V12.9</h2>
         <input type="text" id="username" placeholder="User" value="admin">
         <input type="password" id="password" placeholder="Pass" value="HA5566">
         <button onclick="checkLogin()">VÀO HỆ THỐNG</button>
@@ -130,9 +126,9 @@
     const map = L.map('map', { zoomSnap: 0.1, zoomControl: false }).setView([20.8, 106.0], 9);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
 
-    // Tạo các Pane để quản lý lớp hiển thị (Z-Index)
+    // Lớp hiển thị cao nhất để click xuyên qua được tất cả
     map.createPane('paneDealers');
-    map.getPane('paneDealers').style.zIndex = 650; // Nằm trên Circle và Heatmap
+    map.getPane('paneDealers').style.zIndex = 700;
 
     let dealers = [], warehouses = [], highlightLayer = L.layerGroup().addTo(map), 
         heatLayerGroup = L.layerGroup().addTo(map), dealerLayer = L.layerGroup().addTo(map), heatLayer = null;
@@ -156,11 +152,8 @@
                     const color = getRankColor(ds);
                     const m = L.circleMarker([lat, lng], { 
                         radius: ds > 0 ? 5 : 3, 
-                        color: color, 
-                        weight: 1, 
-                        fillOpacity: 0.9, 
-                        fillColor: color,
-                        pane: 'paneDealers' // Ép marker nằm lớp trên
+                        color: color, weight: 1, fillOpacity: 0.9, fillColor: color,
+                        pane: 'paneDealers' // Ép marker lên lớp trên cùng
                     });
                     m.bindTooltip(`<b>${col[1]}</b><br>${ds.toLocaleString()}đ`, { sticky: true });
                     dealers.push({ latlng: L.latLng(lat, lng), ds, ten: col[1], lat, lng });
@@ -171,7 +164,7 @@
             if (heatLayer) heatLayerGroup.removeLayer(heatLayer);
             heatLayer = L.heatLayer(hp, { radius: 25, blur: 15, max: 0.6 }).addTo(heatLayerGroup);
             updateStats();
-        } catch (e) { console.log("Lỗi tải data"); }
+        } catch (e) { console.log("Lỗi data"); }
     }
 
     function initWarehouses() {
@@ -196,20 +189,14 @@
             icon: L.divIcon({ className: '', html: `<div class="wh-label" style="background:${color}">${name}</div>`, iconSize: null })
         }).addTo(map);
 
-        // Vòng tròn cộng hưởng thâm hơn
         const c = L.circle(latlng, { 
             radius: rM, 
-            color: '#2d3436', // Màu đen xám thâm
-            weight: 2, 
-            fillOpacity: 0.15, // Đậm hơn tí
-            fillColor: '#1e272e',
-            interactive: false // Quan trọng: Cho phép click xuyên qua vòng tròn để chọn KH
+            color: '#2d3436', weight: 2, fillOpacity: 0.15, fillColor: '#1e272e',
+            interactive: false // Không cản trở click đại lý
         }).addTo(map);
 
         const wh = { id, marker: m, circle: c, latlng, radius: rM, name, isCompany };
-        
         m.on('dragend', () => { wh.latlng = m.getLatLng(); c.setLatLng(wh.latlng); updateStats(); saveUserWarehouses(); });
-        
         warehouses.push(wh);
         updateStats();
     }
@@ -219,8 +206,7 @@
         if (wh && value >= 0) {
             wh.radius = parseFloat(value) * 1000;
             wh.circle.setRadius(wh.radius);
-            updateStats();
-            saveUserWarehouses();
+            updateStats(); saveUserWarehouses();
         }
     }
 
@@ -257,7 +243,6 @@
                     <div style="font-size:11px; margin-top:4px;">Doanh số: <b style="color:#d63031">${sumDS.toLocaleString()}đ</b></div>
                     <table class="dealer-table" id="tbl-${w.id}"><thead><tr><th>Tên KH</th><th>%</th><th>Km</th></tr></thead><tbody>${rows || '<tr><td colspan="3">Trống</td></tr>'}</tbody></table>
                 </div>`;
-            
             if (w.isCompany) compList.innerHTML += html; else userList.innerHTML += html;
         });
     }
@@ -286,7 +271,11 @@
         const data = await resp.json();
         if (data.length > 0) { 
             highlightLayer.clearLayers(); 
-            L.geoJSON(data[0].geojson, { style: { color: '#ff1744', weight: 3, fillOpacity: 0 } }).addTo(highlightLayer); 
+            // FIX CHÍNH: Thêm interactive: false để không cản trở click xuyên qua lớp viền
+            L.geoJSON(data[0].geojson, { 
+                style: { color: '#ff1744', weight: 3, fillOpacity: 0 },
+                interactive: false 
+            }).addTo(highlightLayer); 
             map.fitBounds(L.geoJSON(data[0].geojson).getBounds(), { padding: [30,30] }); 
         }
     }
