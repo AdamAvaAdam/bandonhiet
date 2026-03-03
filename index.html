@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Điều phối V13.0 - Thu gọn nhóm kho</title>
+    <title>Điều phối V13.1 - Tọa độ & Thu gọn</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root { --primary: #ff1744; --dark: #2d3436; --bg: #f8f9fa; --teal: #00b894; }
@@ -46,9 +46,7 @@
         }
         .section-title { font-size: 11px; font-weight: 900; color: #636e72; text-transform: uppercase; }
         .collapse-arrow { transition: transform 0.3s; font-weight: bold; }
-        .collapsed .collapse-arrow { transform: rotate(-90deg); }
-        .group-content { overflow: hidden; transition: max-height 0.3s ease-out; }
-        .collapsed-content { display: none; }
+        .group-content { overflow: hidden; }
 
         .card { background: #fffaf0; border-radius: 12px; padding: 12px; margin-bottom: 12px; border: 1px solid #f3e5ab; }
         .stats-box { background: #ffffff; padding: 10px; border-radius: 10px; margin-top: 8px; border-left: 5px solid var(--dark); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
@@ -65,7 +63,7 @@
 
 <div id="login-overlay">
     <div class="login-box">
-        <h2 style="color:var(--primary)">ĐIỀU PHỐI V13.0</h2>
+        <h2 style="color:var(--primary)">ĐIỀU PHỐI V13.1</h2>
         <input type="text" id="username" placeholder="User" value="admin">
         <input type="password" id="password" placeholder="Pass" value="HA5566">
         <button onclick="checkLogin()">VÀO HỆ THỐNG</button>
@@ -80,12 +78,19 @@
         <div class="card">
             <div style="font-weight:800; color:var(--primary); font-size:11px; margin-bottom:8px;">🔍 TÌM KIẾM ĐỊA PHƯƠNG</div>
             <input type="text" id="areaSearchInput" placeholder="Vd: Hà Nội" onkeypress="if(event.key==='Enter') searchArea()">
-            <button onclick="searchArea()" style="width:100%; padding:10px; background:var(--dark); color:white; border:none; border-radius:8px; margin-top:5px; font-weight:bold;">SOI VIỀN KHU VỰC</button>
+            <button onclick="searchArea()" style="width:100%; padding:10px; background:var(--dark); color:white; border:none; border-radius:8px; margin-top:5px; font-weight:bold; cursor:pointer;">SOI VIỀN KHU VỰC</button>
         </div>
         
         <div class="card" style="background:#f1f2f6;">
-            <div style="font-weight:800; color:var(--dark); font-size:11px; margin-bottom:8px;">📍 CẮM KHO ĐIỀU PHỐI</div>
-            <select id="pinToggle" style="width:100%; padding:10px; border-radius:8px;"><option value="off">CHẾ ĐỘ XEM</option><option value="on">CHẾ ĐỘ CẮM KHO</option></select>
+            <div style="font-weight:800; color:var(--dark); font-size:11px; margin-bottom:8px;">📍 QUẢN LÝ ĐIỀU PHỐI</div>
+            <select id="pinToggle" style="width:100%; padding:10px; border-radius:8px; margin-bottom:8px;">
+                <option value="off">CHẾ ĐỘ XEM</option>
+                <option value="on">CHẾ ĐỘ CẮM KHO (CLICK BẢN ĐỒ)</option>
+            </select>
+            <div style="display: flex; gap: 5px;">
+                <input type="text" id="coordInput" placeholder="Lat, Lng (Vd: 21.0, 105.8)" style="flex:1; padding:10px; border-radius:8px; border:1px solid #ddd; font-size:13px;">
+                <button onclick="addWarehouseByCoords()" style="padding:10px; background:var(--primary); color:white; border:none; border-radius:8px; font-weight:bold; font-size:11px; cursor:pointer;">THÊM KHO</button>
+            </div>
         </div>
 
         <div class="section-header" onclick="toggleGroup('company-group')">
@@ -144,19 +149,14 @@
         initWarehouses();
     }
 
-    // Toggle Thu gọn/Mở rộng
     function toggleGroup(groupId) {
         const content = document.getElementById(groupId);
         const arrow = document.getElementById('arrow-' + groupId);
-        const header = arrow.parentElement;
-        
         if (content.style.display === "none") {
             content.style.display = "block";
-            header.classList.remove('collapsed');
             arrow.innerText = "▼";
         } else {
             content.style.display = "none";
-            header.classList.add('collapsed');
             arrow.innerText = "◀";
         }
     }
@@ -229,6 +229,19 @@
         updateStats();
     }
 
+    function addWarehouseByCoords() {
+        const input = document.getElementById('coordInput').value;
+        const parts = input.split(/[, ]+/);
+        if (parts.length < 2) return alert("Định dạng: Lat, Lng");
+        const lat = parseFloat(parts[0]), lng = parseFloat(parts[1]);
+        if (isNaN(lat) || isNaN(lng)) return alert("Tọa độ sai");
+        const latlng = L.latLng(lat, lng);
+        addWarehouse(latlng, 5, "Kho tọa độ " + (warehouses.length + 1), false);
+        map.setView(latlng, 12);
+        document.getElementById('coordInput').value = "";
+        saveUserWarehouses();
+    }
+
     function changeRadius(id, value) {
         const wh = warehouses.find(w => w.id === id);
         if (wh && value >= 0) {
@@ -251,12 +264,10 @@
         const compList = document.getElementById('company-warehouse-list');
         const userList = document.getElementById('user-warehouse-list');
         compList.innerHTML = ''; userList.innerHTML = '';
-
         warehouses.forEach(w => {
             const inR = dealers.filter(d => w.latlng.distanceTo(d.latlng) <= w.radius).sort((a,b) => b.ds - a.ds);
             const sumDS = inR.reduce((a, b) => a + b.ds, 0);
             let rows = inR.map(d => `<tr><td>${d.ten}</td><td style="color:var(--primary); font-weight:bold;">${sumDS > 0 ? ((d.ds/sumDS)*100).toFixed(1) : 0}%</td><td class="dist-cell" data-lat="${d.lat}" data-lng="${d.lng}">...</td></tr>`).join('');
-            
             const html = `
                 <div class="stats-box" style="border-left-color: ${w.isCompany ? '#2d3436' : '#ff1744'}">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -264,7 +275,7 @@
                         <div style="display:flex; align-items:center;">
                             <span style="font-size:10px; color:#666;">R:</span>
                             <input type="number" class="radius-inline-input" value="${w.radius/1000}" onchange="changeRadius('${w.id}', this.value)">
-                            ${!w.isCompany ? `<button onclick="removeWarehouse('${w.id}')" style="margin-left:8px; background:none; border:none; color:red; font-size:10px; cursor:pointer;">[X]</button>` : ''}
+                            ${!w.isCompany ? `<button onclick="removeWarehouse('${w.id}')" style="margin-left:8px; border:none; color:red; font-size:10px; cursor:pointer; background:none;">[X]</button>` : ''}
                             <span style="cursor:pointer; color:var(--primary); font-size:18px; margin-left:8px;" onclick="toggleTable('${w.id}')">▾</span>
                         </div>
                     </div>
