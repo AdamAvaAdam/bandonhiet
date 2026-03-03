@@ -6,7 +6,7 @@
     <title>Điều phối V13.5 - So sánh Chuyên sâu</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        :root { --primary: #ff1744; --dark: #2d3436; --bg: #f8f9fa; --teal: #00b894; --blue: #0984e3; }
+        :root { --primary: #ff1744; --dark: #2d3436; --bg: #f8f9fa; --teal: #00b894; --warning: #f1c40f; --blue: #0984e3; }
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
         
         #login-overlay { position: fixed; inset: 0; background: var(--dark); display: flex; align-items: center; justify-content: center; z-index: 10000; }
@@ -18,7 +18,7 @@
         #map { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 1; background: #fdfdfd; }
         
         #sidebar { 
-            position: absolute; bottom: 0; left: 0; width: 100%; max-height: 80%; 
+            position: absolute; bottom: 0; left: 0; width: 100%; max-height: 75%; 
             background: #fff; z-index: 1000; padding: 15px; box-sizing: border-box; 
             border-top: 4px solid var(--primary); transition: transform 0.4s;
             overflow-y: auto; box-shadow: 0 -5px 25px rgba(0,0,0,0.2);
@@ -32,30 +32,35 @@
         }
 
         @media (min-width: 768px) {
-            #sidebar { top: 0; left: 0; bottom: 0; width: 450px; max-height: 100%; border-top: none; border-right: 4px solid var(--primary); transform: none !important; }
+            #sidebar { top: 0; left: 0; bottom: 0; width: 420px; max-height: 100%; border-top: none; border-right: 4px solid var(--primary); transform: none !important; }
             #sidebar.hidden { transform: translateX(-105%) !important; }
-            #floating-toggle { bottom: 25px; left: 410px; right: auto; }
+            #floating-toggle { bottom: 25px; left: 385px; right: auto; }
             #sidebar.hidden ~ #floating-toggle { left: 20px; }
         }
 
+        .section-header { display: flex; justify-content: space-between; align-items: center; background: #f1f2f6; padding: 10px; border-radius: 8px; cursor: pointer; margin: 15px 0 8px; }
+        .section-title { font-size: 11px; font-weight: 900; color: #636e72; text-transform: uppercase; }
         .card { background: #fffaf0; border-radius: 12px; padding: 12px; margin-bottom: 12px; border: 1px solid #f3e5ab; }
         .stats-box { background: #ffffff; padding: 10px; border-radius: 10px; margin-top: 8px; border-left: 5px solid var(--dark); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .radius-inline-input { width: 50px; padding: 2px 4px; border: 1px solid #ddd; border-radius: 4px; font-size: 11px; font-weight: bold; text-align: center; margin-left: 5px; color: var(--primary); }
         
-        /* BẢNG SO SÁNH PHỦ LÊN (OVERLAY) */
+        .dealer-table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 11px; display: none; }
+        .dealer-table th { text-align: left; border-bottom: 1px solid #eee; padding: 4px; }
+        .dealer-table td { padding: 6px 4px; border-top: 1px solid #f9f9f9; }
+
+        /* MODAL BẢNG SO SÁNH */
         #compare-modal { 
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 90%; max-width: 800px; max-height: 80vh; background: white;
+            width: 90%; max-width: 900px; max-height: 85vh; background: white;
             z-index: 5000; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.5);
             display: none; flex-direction: column; padding: 20px; border-top: 10px solid var(--blue);
         }
-        .compare-table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 10px; overflow-y: auto; }
+        .compare-table-wrapper { overflow-x: auto; margin-top: 15px; }
+        .compare-table { width: 100%; border-collapse: collapse; font-size: 11px; }
         .compare-table th { background: var(--blue); color: white; padding: 10px; text-align: left; position: sticky; top: 0; }
         .compare-table td { padding: 10px; border-bottom: 1px solid #eee; vertical-align: top; }
 
-        /* DANH SÁCH CHỌN KHO */
-        #selection-list { display: none; margin: 10px 0; padding: 10px; background: #f1f2f6; border-radius: 10px; }
-        .select-item { display: flex; align-items: center; margin-bottom: 5px; font-size: 13px; font-weight: bold; }
-
+        #selection-overlay { display: none; margin-top: 10px; padding: 10px; background: #eef2f7; border-radius: 10px; border: 1px dashed var(--blue); }
         .wh-label { display: inline-block; white-space: nowrap; padding: 3px 8px; border-radius: 4px; color: white; font-size: 11px; font-weight: bold; border: 1.5px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); transform: translate(-50%, -140%); pointer-events: none; }
     </style>
 </head>
@@ -77,26 +82,44 @@
     <div id="sidebar">
         <div class="card">
             <div style="font-weight:800; color:var(--primary); font-size:11px; margin-bottom:8px;">🔍 TÌM KIẾM ĐỊA PHƯƠNG</div>
-            <input type="text" id="areaSearchInput" placeholder="Vd: Hà Nội" style="width:100%; padding:10px; border-radius:8px; border:1px solid #ddd;" onkeypress="if(event.key==='Enter') searchArea()">
+            <input type="text" id="areaSearchInput" placeholder="Vd: Hà Nội" onkeypress="if(event.key==='Enter') searchArea()">
             <button onclick="searchArea()" style="width:100%; padding:10px; background:var(--dark); color:white; border:none; border-radius:8px; margin-top:5px; font-weight:bold; cursor:pointer;">SOI VIỀN KHU VỰC</button>
         </div>
         
-        <div class="card" style="background:#eef2f7; border: 2px solid var(--blue);">
-            <div style="font-weight:800; color:var(--blue); font-size:12px; margin-bottom:8px;">🛠️ TÍNH NĂNG CHIẾN LƯỢC</div>
-            <button onclick="openSelection()" style="width:100%; padding:12px; background:var(--blue); color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer; margin-bottom:5px;">📊 BẮT ĐẦU SO SÁNH KHO</button>
+        <div class="card" style="background:#f1f2f6;">
+            <div style="font-weight:800; color:var(--dark); font-size:11px; margin-bottom:8px;">📍 QUẢN LÝ ĐIỀU PHỐI</div>
+            <select id="pinToggle" style="width:100%; padding:10px; border-radius:8px; margin-bottom:8px;">
+                <option value="off">CHẾ ĐỘ XEM</option>
+                <option value="on">CHẾ ĐỘ CẮM KHO (CLICK BẢN ĐỒ)</option>
+            </select>
+            <div style="display: flex; gap: 5px; margin-bottom: 8px;">
+                <input type="text" id="coordInput" placeholder="Lat, Lng" style="flex:1; padding:10px; border-radius:8px; border: 1px solid #ddd; font-size:13px;">
+                <button onclick="addWarehouseByCoords()" style="padding:10px; background:var(--primary); color:white; border:none; border-radius:8px; font-weight:bold; font-size:11px; cursor:pointer;">THÊM</button>
+            </div>
             
-            <div id="selection-list">
-                <div style="font-size:11px; color:#666; margin-bottom:8px;">Chọn các kho cần đối chiếu:</div>
-                <div id="warehouses-to-select"></div>
-                <button onclick="executeCompare()" style="width:100%; padding:10px; background:var(--teal); color:white; border:none; border-radius:8px; font-weight:bold; margin-top:10px; cursor:pointer;">XÁC NHẬN & XEM BẢNG ĐỐI CHIẾU</button>
-                <button onclick="cancelSelection()" style="width:100%; padding:5px; background:none; border:none; color:#666; font-size:11px; cursor:pointer; margin-top:5px;">Hủy bỏ</button>
+            <button onclick="startCompareSelection()" style="width:100%; padding:12px; background:var(--blue); color:white; border:none; border-radius:8px; font-weight:bold; font-size:12px; cursor:pointer; margin-bottom:8px;">📊 BẮT ĐẦU SO SÁNH KHO</button>
+            
+            <div id="selection-overlay">
+                <div style="font-size:11px; font-weight:bold; margin-bottom:8px;">Chọn kho để đối chiếu:</div>
+                <div id="selection-list-container" style="max-height:150px; overflow-y:auto; margin-bottom:10px;"></div>
+                <button onclick="generateComparisonTable()" style="width:100%; padding:10px; background:var(--teal); color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">XÁC NHẬN SO SÁNH</button>
+                <button onclick="cancelCompare()" style="width:100%; margin-top:5px; background:none; border:none; color:#666; font-size:10px; cursor:pointer;">Hủy bỏ</button>
             </div>
 
-            <button onclick="resetUserWarehouses()" style="width:100%; padding:8px; background:none; color:red; border:1px solid red; border-radius:8px; font-weight:bold; font-size:11px; cursor:pointer; margin-top:10px;">RESET SẠCH KHO ĐÃ CẮM</button>
+            <button onclick="resetUserWarehouses()" style="width:100%; padding:8px; background:none; border:1px solid var(--warning); color:var(--dark); border-radius:8px; font-weight:bold; font-size:11px; cursor:pointer; margin-top:5px;">RESET SẠCH KHO ĐÃ CẮM</button>
         </div>
 
-        <div id="warehouse-display-list">
-             </div>
+        <div class="section-header" onclick="toggleGroup('company-group')">
+            <span class="section-title">🏭 Hệ thống kho cố định</span>
+            <span id="arrow-company-group" class="collapse-arrow">▼</span>
+        </div>
+        <div id="company-group" class="group-content"><div id="company-warehouse-list"></div></div>
+
+        <div class="section-header" onclick="toggleGroup('user-group')">
+            <span class="section-title">📍 Kho cắm điều phối</span>
+            <span id="arrow-user-group" class="collapse-arrow">▼</span>
+        </div>
+        <div id="user-group" class="group-content"><div id="user-warehouse-list"></div></div>
         
         <div style="margin-top:20px;">
             <button onclick="loadDataOnline()" style="width:100%; padding:12px; background:var(--teal); color:white; border:none; border-radius:8px; font-weight:bold; margin-bottom:8px;">LÀM MỚI DỮ LIỆU</button>
@@ -107,25 +130,23 @@
 
 <div id="compare-modal">
     <div style="display:flex; justify-content:space-between; align-items:center;">
-        <h3 style="margin:0; color:var(--blue);">📊 BẢNG SO SÁNH CHI TIẾT</h3>
+        <h3 style="margin:0; color:var(--blue);">📊 BẢNG ĐỐI CHIẾU CHI TIẾT</h3>
         <button onclick="closeCompareModal()" style="background:var(--primary); color:white; border:none; padding:8px 15px; border-radius:10px; font-weight:bold; cursor:pointer;">ĐÓNG [X]</button>
     </div>
-    <div style="overflow-x:auto; margin-top:15px;">
+    <div class="compare-table-wrapper">
         <table class="compare-table">
             <thead>
                 <tr>
                     <th>Tên Kho</th>
-                    <th>Vùng Phủ (Km)</th>
                     <th>SL Khách</th>
                     <th>Tổng Doanh Số (đ)</th>
-                    <th>Danh Sách Khách & Doanh Số</th>
+                    <th>Danh sách Khách hàng & DS chi tiết</th>
                 </tr>
             </thead>
-            <tbody id="compare-modal-body"></tbody>
+            <tbody id="compare-result-body"></tbody>
         </table>
     </div>
 </div>
-
 <div id="modal-backdrop" style="position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:4999; display:none;"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -145,19 +166,83 @@
         { name: 'Kho Hưng Yên', lat: 20.76934, lng: 106.051002 }
     ];
 
-    let dealers = [], warehouses = [], selectionActive = false;
+    let dealers = [], warehouses = [];
     const map = L.map('map', { zoomSnap: 0.1, zoomControl: false }).setView([20.8, 106.0], 9);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
     map.createPane('paneDealers').style.zIndex = 700;
     let highlightLayer = L.layerGroup().addTo(map), dealerLayer = L.layerGroup().addTo(map);
 
     function checkLogin() {
-        if (document.getElementById('username').value === 'admin' && document.getElementById('password').value === 'HA5566') { localStorage.setItem('isLogged', 'true'); enterApp(); }
+        if (document.getElementById('username').value === 'admin' && document.getElementById('password').value === 'HA5566') {
+            localStorage.setItem('isLogged', 'true'); enterApp();
+        }
     }
     function logout() { localStorage.removeItem('isLogged'); location.reload(); }
     window.onload = function() { if (localStorage.getItem('isLogged') === 'true') enterApp(); };
-    function enterApp() { document.getElementById('login-overlay').style.display = 'none'; document.getElementById('main-app').style.display = 'flex'; setTimeout(() => { map.invalidateSize(); }, 400); loadDataOnline(); initWarehouses(); }
 
+    function enterApp() {
+        document.getElementById('login-overlay').style.display = 'none';
+        document.getElementById('main-app').style.display = 'flex';
+        setTimeout(() => { map.invalidateSize(); }, 400);
+        loadDataOnline(); initWarehouses();
+    }
+
+    // --- LOGIC SO SÁNH ---
+    function startCompareSelection() {
+        const overlay = document.getElementById('selection-overlay');
+        const container = document.getElementById('selection-list-container');
+        overlay.style.display = 'block';
+        container.innerHTML = warehouses.map(w => `
+            <div style="display:flex; align-items:center; margin-bottom:5px;">
+                <input type="checkbox" class="compare-checkbox" value="${w.id}" id="chk-${w.id}">
+                <label for="chk-${w.id}" style="margin-left:8px; font-size:12px; cursor:pointer;">${w.name} (${w.radius/1000}km)</label>
+            </div>
+        `).join('');
+    }
+
+    function cancelCompare() { document.getElementById('selection-overlay').style.display = 'none'; }
+
+    function generateComparisonTable() {
+        const selectedIds = Array.from(document.querySelectorAll('.compare-checkbox:checked')).map(cb => cb.value);
+        if (selectedIds.length === 0) return alert("Vui lòng chọn ít nhất một kho!");
+
+        const resultBody = document.getElementById('compare-result-body');
+        resultBody.innerHTML = '';
+
+        selectedIds.forEach(id => {
+            const w = warehouses.find(wh => wh.id === id);
+            const inR = dealers.filter(d => w.latlng.distanceTo(d.latlng) <= w.radius).sort((a,b) => b.ds - a.ds);
+            const sumDS = inR.reduce((a, b) => a + b.ds, 0);
+            
+            // Tạo danh sách khách hàng chi tiết
+            const customerListHtml = inR.map(d => 
+                `<div style="display:flex; justify-content:space-between; border-bottom:1px solid #f0f0f0; padding:2px 0;">
+                    <span>${d.ten}</span>
+                    <span style="font-weight:bold; color:var(--blue);">${d.ds.toLocaleString()}đ</span>
+                </div>`
+            ).join('');
+
+            resultBody.innerHTML += `
+                <tr>
+                    <td style="font-weight:bold; color:${w.isCompany?'#2d3436':'#ff1744'}">${w.name}</td>
+                    <td style="text-align:center; font-weight:bold;">${inR.length}</td>
+                    <td style="color:red; font-weight:bold;">${sumDS.toLocaleString()}đ</td>
+                    <td><div style="max-height:150px; overflow-y:auto; padding-right:5px;">${customerListHtml || 'Trống'}</div></td>
+                </tr>
+            `;
+        });
+
+        document.getElementById('compare-modal').style.display = 'flex';
+        document.getElementById('modal-backdrop').style.display = 'block';
+    }
+
+    function closeCompareModal() {
+        document.getElementById('compare-modal').style.display = 'none';
+        document.getElementById('modal-backdrop').style.display = 'none';
+        document.getElementById('selection-overlay').style.display = 'none';
+    }
+
+    // --- CÁC HÀM CƠ BẢN ---
     async function loadDataOnline() {
         const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSqx48yei68qBJFSiHZzxCeGO0df4IDE6md9hzu7TUv5GjgOvU9yIpm4lEN6HJw9zJuek4YYMj8XAyn/pub?gid=0&single=true&output=csv";
         try {
@@ -170,9 +255,10 @@
                 let lat = parseFloat(col[4].toString().replace(',', '.')), lng = parseFloat(col[3].toString().replace(',', '.'));
                 if (!isNaN(lat) && !isNaN(lng)) {
                     const color = ds <= 0 ? '#b2bec3' : (ds < 500000000 ? '#00b894' : (ds < 1000000000 ? '#a29bfe' : (ds < 2000000000 ? '#fdcb6e' : '#ff1744')));
-                    const m = L.circleMarker([lat, lng], { radius: 5, color: color, weight: 1, fillOpacity: 0.9, fillColor: color, pane: 'paneDealers' }).addTo(dealerLayer);
+                    const m = L.circleMarker([lat, lng], { radius: 5, color: color, weight: 1, fillOpacity: 0.9, fillColor: color, pane: 'paneDealers' });
                     m.bindTooltip(`<b>${col[1]}</b><br>${ds.toLocaleString()}đ`, { sticky: true });
-                    dealers.push({ latlng: L.latLng(lat, lng), ds, ten: col[1] });
+                    dealers.push({ latlng: L.latLng(lat, lng), ds, ten: col[1], lat, lng });
+                    m.addTo(dealerLayer);
                 }
             });
             updateStats();
@@ -185,84 +271,116 @@
         saved.forEach(d => addWarehouse(L.latLng(d.lat, d.lng), d.radius, d.name, false));
     }
 
+    map.on('click', e => {
+        if (document.getElementById('pinToggle').value === 'on') {
+            const customName = prompt("Tên kho điều phối:", "Kho cắm " + (warehouses.filter(w=>!w.isCompany).length + 1));
+            if (customName) addWarehouse(e.latlng, 5, customName, false);
+        }
+    });
+
     function addWarehouse(latlng, radiusKm, name, isCompany = false) {
-        const id = isCompany ? ("comp-"+name) : ("user-"+Date.now()+Math.random());
+        const id = isCompany ? ("comp-" + name) : ("user-" + Date.now() + Math.random());
         const rM = radiusKm * 1000;
         const color = isCompany ? '#2d3436' : '#ff1744';
         const m = L.marker(latlng, { draggable: true, icon: L.divIcon({ className: '', html: `<div class="wh-label" style="background:${color}">${name}</div>`, iconSize: null }) }).addTo(map);
         const c = L.circle(latlng, { radius: rM, color: '#2d3436', weight: 2, fillOpacity: 0.15, fillColor: '#1e272e', interactive: false }).addTo(map);
         const wh = { id, marker: m, circle: c, latlng, radius: rM, name, isCompany };
         m.on('dragend', () => { wh.latlng = m.getLatLng(); c.setLatLng(wh.latlng); updateStats(); saveUserWarehouses(); });
-        warehouses.push(wh); updateStats();
+        warehouses.push(wh); updateStats(); if(!isCompany) saveUserWarehouses();
     }
 
-    // --- LOGIC SO SÁNH MỚI ---
-    function openSelection() {
-        document.getElementById('selection-list').style.display = 'block';
-        const container = document.getElementById('warehouses-to-select');
-        container.innerHTML = warehouses.map(w => `
-            <div class="select-item">
-                <input type="checkbox" class="compare-chk" value="${w.id}" id="chk-${w.id}">
-                <label for="chk-${w.id}" style="margin-left:8px; color:${w.isCompany?'#2d3436':'#ff1744'}">${w.name}</label>
-            </div>
-        `).join('');
+    function addWarehouseByCoords() {
+        const input = document.getElementById('coordInput').value;
+        const parts = input.split(/[, ]+/); if (parts.length < 2) return alert("Lat, Lng");
+        const lat = parseFloat(parts[0]), lng = parseFloat(parts[1]);
+        const customName = prompt("Tên kho:", "Kho tọa độ " + (warehouses.filter(w=>!w.isCompany).length + 1));
+        if (customName) { addWarehouse(L.latLng(lat, lng), 5, customName, false); map.setView([lat, lng], 12); }
     }
 
-    function cancelSelection() { document.getElementById('selection-list').style.display = 'none'; }
-
-    function executeCompare() {
-        const checked = Array.from(document.querySelectorAll('.compare-chk:checked')).map(el => el.value);
-        if (checked.length === 0) return alert("Vui lòng chọn ít nhất 1 kho!");
-
-        const body = document.getElementById('compare-modal-body');
-        body.innerHTML = '';
-        
-        checked.forEach(id => {
-            const w = warehouses.find(wh => wh.id === id);
-            const inR = dealers.filter(d => w.latlng.distanceTo(d.latlng) <= w.radius).sort((a,b) => b.ds - a.ds);
-            const sumDS = inR.reduce((a, b) => a + b.ds, 0);
-            const listCust = inR.map(d => `<div style="border-bottom:1px solid #f0f0f0; padding:2px 0;">${d.ten}: <b>${d.ds.toLocaleString()}đ</b></div>`).join('');
-            
-            body.innerHTML += `
-                <tr>
-                    <td style="font-weight:bold; color:${w.isCompany?'#2d3436':'#ff1744'}">${w.name}</td>
-                    <td style="text-align:center">${w.radius/1000} km</td>
-                    <td style="text-align:center; font-weight:bold;">${inR.length}</td>
-                    <td style="color:red; font-weight:bold;">${sumDS.toLocaleString()}đ</td>
-                    <td><div style="max-height:150px; overflow-y:auto; padding-right:5px;">${listCust || 'Không có khách'}</div></td>
-                </tr>
-            `;
-        });
-
-        document.getElementById('compare-modal').style.display = 'flex';
-        document.getElementById('modal-backdrop').style.display = 'block';
+    function resetUserWarehouses() {
+        if (confirm("Xóa sạch kho đã cắm?")) {
+            warehouses.forEach(w => { if (!w.isCompany) { map.removeLayer(w.marker); map.removeLayer(w.circle); } });
+            warehouses = warehouses.filter(w => w.isCompany);
+            localStorage.removeItem('savedWarehousesLog'); updateStats();
+        }
     }
 
-    function closeCompareModal() {
-        document.getElementById('compare-modal').style.display = 'none';
-        document.getElementById('modal-backdrop').style.display = 'none';
+    function changeRadius(id, value) {
+        const wh = warehouses.find(w => w.id === id);
+        if (wh && value >= 0) { wh.radius = parseFloat(value) * 1000; wh.circle.setRadius(wh.radius); updateStats(); saveUserWarehouses(); }
+    }
+
+    function removeWarehouse(id) {
+        if(confirm("Xóa kho này?")) {
+            const wh = warehouses.find(w => w.id === id);
+            map.removeLayer(wh.marker); map.removeLayer(wh.circle);
+            warehouses = warehouses.filter(w => w.id !== id); updateStats(); saveUserWarehouses();
+        }
     }
 
     function updateStats() {
-        const list = document.getElementById('warehouse-display-list');
-        list.innerHTML = warehouses.map(w => `
-            <div class="stats-box" style="border-left-color:${w.isCompany?'#2d3436':'#ff1744'}">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <span style="font-weight:bold; font-size:13px;">${w.name}</span>
-                    <div style="display:flex; align-items:center;">
-                        <span style="font-size:10px; color:#666;">R (km):</span>
-                        <input type="number" class="radius-inline-input" value="${w.radius/1000}" onchange="changeRadius('${w.id}', this.value)">
+        const compList = document.getElementById('company-warehouse-list');
+        const userList = document.getElementById('user-warehouse-list');
+        compList.innerHTML = ''; userList.innerHTML = '';
+        warehouses.forEach(w => {
+            const inR = dealers.filter(d => w.latlng.distanceTo(d.latlng) <= w.radius).sort((a,b) => b.ds - a.ds);
+            const sumDS = inR.reduce((a, b) => a + b.ds, 0);
+            let rows = inR.map(d => `<tr><td>${d.ten}</td><td style="color:var(--primary); font-weight:bold;">${sumDS > 0 ? ((d.ds/sumDS)*100).toFixed(1) : 0}%</td><td class="dist-cell" data-lat="${d.lat}" data-lng="${d.lng}">...</td></tr>`).join('');
+            const html = `<div class="stats-box" style="border-left-color: ${w.isCompany ? '#2d3436' : '#ff1744'}">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-weight:bold; font-size:12px;">${w.name}</span>
+                        <div style="display:flex; align-items:center;">
+                            <span style="font-size:10px; color:#666;">R:</span>
+                            <input type="number" class="radius-inline-input" value="${w.radius/1000}" onchange="changeRadius('${w.id}', this.value)">
+                            ${!w.isCompany ? `<button onclick="removeWarehouse('${w.id}')" style="margin-left:8px; border:none; color:red; font-size:10px; cursor:pointer; background:none;">[X]</button>` : ''}
+                            <span style="cursor:pointer; color:var(--primary); font-size:18px; margin-left:8px;" onclick="toggleTable('${w.id}')">▾</span>
+                        </div>
                     </div>
-                </div>
-            </div>
-        `).join('');
+                    <div style="font-size:11px; margin-top:4px;">Doanh số: <b style="color:#d63031">${sumDS.toLocaleString()}đ</b></div>
+                    <table class="dealer-table" id="tbl-${w.id}"><thead><tr><th>Tên KH</th><th>%</th><th>Km</th></tr></thead><tbody>${rows || '<tr><td colspan="3">Trống</td></tr>'}</tbody></table>
+                </div>`;
+            if (w.isCompany) compList.innerHTML += html; else userList.innerHTML += html;
+        });
     }
 
-    function changeRadius(id, val) { const w = warehouses.find(wh => wh.id === id); w.radius = val * 1000; w.circle.setRadius(w.radius); saveUserWarehouses(); }
-    function saveUserWarehouses() { localStorage.setItem('savedWarehousesLog', JSON.stringify(warehouses.filter(w => !w.isCompany).map(w => ({ lat: w.latlng.lat, lng: w.latlng.lng, radius: w.radius/1000, name: w.name })))); }
-    function resetUserWarehouses() { if(confirm("Xóa sạch?")) { warehouses.forEach(w => { if(!w.isCompany){ map.removeLayer(w.marker); map.removeLayer(w.circle); } }); warehouses = warehouses.filter(w=>w.isCompany); localStorage.removeItem('savedWarehousesLog'); updateStats(); } }
-    async function searchArea() { const input = document.getElementById('areaSearchInput').value; if (!input) return; const resp = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(input + ", Vietnam")}&format=json&polygon_geojson=1&limit=1`); const data = await resp.json(); if (data.length > 0) { highlightLayer.clearLayers(); L.geoJSON(data[0].geojson, { style: { color: '#ff1744', weight: 3, fillOpacity: 0 }, interactive: false }).addTo(highlightLayer); map.fitBounds(L.geoJSON(data[0].geojson).getBounds(), { padding: [30,30] }); } }
-    function toggleSidebar() { const sb = document.getElementById('sidebar'), btn = document.getElementById('floating-toggle'); sb.classList.toggle('hidden'); btn.innerText = sb.classList.contains('hidden') ? "☰" : "✖"; }
+    async function toggleTable(id) {
+        const tbl = document.getElementById(`tbl-${id}`);
+        tbl.style.display = (tbl.style.display === "table") ? "none" : "table";
+        if (tbl.style.display === "table") {
+            const wh = warehouses.find(w => w.id === id);
+            const cells = tbl.querySelectorAll('.dist-cell');
+            for (let cell of cells) if (cell.innerText === "...") {
+                const r = await fetch(`https://router.project-osrm.org/route/v1/driving/${wh.latlng.lng},${wh.latlng.lat};${cell.dataset.lng},${cell.dataset.lat}?overview=false`);
+                const d = await r.json(); cell.innerText = d.code === 'Ok' ? (d.routes[0].distance / 1000).toFixed(1) + "km" : "Err";
+            }
+        }
+    }
+
+    function saveUserWarehouses() {
+        const data = warehouses.filter(w => !w.isCompany).map(w => ({ lat: w.latlng.lat, lng: w.latlng.lng, radius: w.radius/1000, name: w.name }));
+        localStorage.setItem('savedWarehousesLog', JSON.stringify(data));
+    }
+
+    async function searchArea() {
+        const input = document.getElementById('areaSearchInput').value; if (!input) return;
+        const resp = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(input + ", Vietnam")}&format=json&polygon_geojson=1&limit=1`);
+        const data = await resp.json();
+        if (data.length > 0) { 
+            highlightLayer.clearLayers(); 
+            L.geoJSON(data[0].geojson, { style: { color: '#ff1744', weight: 3, fillOpacity: 0 }, interactive: false }).addTo(highlightLayer); 
+            map.fitBounds(L.geoJSON(data[0].geojson).getBounds(), { padding: [30,30] }); 
+        }
+    }
+    function toggleSidebar() {
+        const sb = document.getElementById('sidebar'), btn = document.getElementById('floating-toggle');
+        sb.classList.toggle('hidden'); btn.innerText = sb.classList.contains('hidden') ? "☰" : "✖";
+    }
+    function toggleGroup(id) {
+        const content = document.getElementById(id);
+        const arrow = document.getElementById('arrow-' + id);
+        if (content.style.display === "none") { content.style.display = "block"; arrow.innerText = "▼"; }
+        else { content.style.display = "none"; arrow.innerText = "◀"; }
+    }
 </script>
 </body>
 </html>
