@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Điều phối V13.7 - Giao diện Tối ưu</title>
+    <title>Điều phối V13.8 - Đối chiếu Trực diện</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root { --primary: #ff1744; --dark: #2d3436; --bg: #f8f9fa; --teal: #00b894; --warning: #f1c40f; --blue: #0984e3; }
@@ -40,7 +40,7 @@
 
         .section-header { display: flex; justify-content: space-between; align-items: center; background: #e9ecef; padding: 10px; border-radius: 8px; cursor: pointer; margin: 15px 0 8px; }
         .section-title { font-size: 11px; font-weight: 900; color: #495057; text-transform: uppercase; }
-        .group-content { display: none; } /* Mặc định ẩn danh sách kho */
+        .group-content { display: none; }
 
         .card { background: #fffaf0; border-radius: 12px; padding: 12px; margin-bottom: 12px; border: 1px solid #f3e5ab; }
         .stats-box { background: #ffffff; padding: 10px; border-radius: 10px; margin-top: 8px; border-left: 5px solid var(--dark); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
@@ -50,22 +50,30 @@
         .dealer-table th { text-align: left; border-bottom: 1px solid #eee; padding: 4px; }
         .dealer-table td { padding: 6px 4px; border-top: 1px solid #f9f9f9; }
 
+        /* MODAL SO SÁNH DẠNG CỘT */
         #compare-modal { 
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 90%; max-width: 900px; max-height: 85vh; background: white;
+            width: 95%; max-width: 1100px; max-height: 85vh; background: white;
             z-index: 5000; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.5);
             display: none; flex-direction: column; padding: 20px; border-top: 10px solid var(--blue);
         }
+        .compare-scroll-area { overflow-x: auto; margin-top: 15px; border: 1px solid #eee; border-radius: 10px; }
+        .compare-grid-table { border-collapse: collapse; min-width: 100%; table-layout: fixed; }
+        .compare-grid-table th { background: var(--blue); color: white; padding: 12px; text-align: center; font-size: 12px; width: 250px; min-width: 200px; border: 1px solid rgba(255,255,255,0.2); }
+        .compare-grid-table td { padding: 0; border: 1px solid #eee; vertical-align: top; background: #fdfdfd; }
+        
+        .cust-list-item { display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid #f0f0f0; font-size: 11px; }
+        .cust-list-item:nth-child(even) { background: #fafafa; }
+        .cust-list-item b { color: var(--primary); }
 
         .wh-label { display: inline-block; white-space: nowrap; padding: 3px 8px; border-radius: 4px; color: white; font-size: 11px; font-weight: bold; border: 1.5px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); transform: translate(-50%, -140%); pointer-events: none; }
-        .glow-point { filter: drop-shadow(0 0 5px currentColor); }
     </style>
 </head>
 <body>
 
 <div id="login-overlay">
     <div class="login-box">
-        <h2 style="color:var(--primary)">ĐIỀU PHỐI V13.7</h2>
+        <h2 style="color:var(--primary)">ĐIỀU PHỐI V13.8</h2>
         <input type="text" id="username" placeholder="User" value="admin">
         <input type="password" id="password" placeholder="Pass" value="HA5566">
         <button onclick="checkLogin()">VÀO HỆ THỐNG</button>
@@ -125,10 +133,15 @@
 
 <div id="compare-modal">
     <div style="display:flex; justify-content:space-between; align-items:center;">
-        <h3 style="margin:0; color:var(--blue);">📊 BẢNG ĐỐI CHIẾU CHI TIẾT</h3>
-        <button onclick="closeCompareModal()" style="background:var(--primary); color:white; border:none; padding:8px 15px; border-radius:10px; font-weight:bold;">ĐÓNG [X]</button>
+        <h3 style="margin:0; color:var(--blue);">📊 ĐỐI CHIẾU CHIẾN LƯỢC KHO</h3>
+        <button onclick="closeCompareModal()" style="background:var(--primary); color:white; border:none; padding:8px 15px; border-radius:10px; font-weight:bold; cursor:pointer;">ĐÓNG [X]</button>
     </div>
-    <div style="overflow-x:auto;"><table class="compare-table"><thead><tr><th>Tên Kho</th><th>SL Khách</th><th>Tổng DS (đ)</th><th>Chi tiết</th></tr></thead><tbody id="compare-result-body"></tbody></table></div>
+    <div class="compare-scroll-area">
+        <table class="compare-grid-table">
+            <thead id="compare-grid-head"></thead>
+            <tbody id="compare-grid-body"></tbody>
+        </table>
+    </div>
 </div>
 <div id="modal-backdrop" style="position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:4999; display:none;"></div>
 
@@ -154,7 +167,6 @@
     window.onload = function() { if (localStorage.getItem('isLogged') === 'true') enterApp(); };
     function enterApp() { document.getElementById('login-overlay').style.display = 'none'; document.getElementById('main-app').style.display = 'flex'; setTimeout(() => { map.invalidateSize(); }, 400); loadDataOnline(); initWarehouses(); }
 
-    // MÀU XÁM VÀNG CHO BẢN ĐỒ
     const map = L.map('map', { zoomSnap: 0.1, zoomControl: false }).setView([20.8, 106.0], 9);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
 
@@ -184,7 +196,7 @@
                 if (!isNaN(lat) && !isNaN(lng)) {
                     const style = getGlowStyle(ds);
                     if (ds > 0) L.circleMarker([lat, lng], { radius: style.glowRadius, color: 'transparent', fillColor: style.color, fillOpacity: 0.15, pane: 'paneDealers', interactive: false }).addTo(dealerLayer);
-                    const m = L.circleMarker([lat, lng], { radius: style.radius, color: style.color, weight: 1.5, fillOpacity: 1, fillColor: style.color, pane: 'paneDealers', className: ds > 1000000000 ? 'glow-point' : '' }).addTo(dealerLayer);
+                    const m = L.circleMarker([lat, lng], { radius: style.radius, color: style.color, weight: 1.5, fillOpacity: 1, fillColor: style.color, pane: 'paneDealers' }).addTo(dealerLayer);
                     m.bindTooltip(`<b>${col[1]}</b><br>${ds.toLocaleString()}đ`, { sticky: true });
                     dealers.push({ latlng: L.latLng(lat, lng), ds, ten: col[1], lat, lng });
                     if (ds > 0) hp.push([lat, lng, Math.min(ds / 1000000000, 1)]);
@@ -213,12 +225,50 @@
         warehouses.push(wh); updateStats(); if(!isCompany) saveUserWarehouses();
     }
 
-    function toggleGroup(id) {
-        const el = document.getElementById(id); const ar = document.getElementById('arrow-'+id);
-        if (el.style.display === "block") { el.style.display = "none"; ar.innerText = "◀"; }
-        else { el.style.display = "block"; ar.innerText = "▼"; }
+    // --- CẢI TIẾN: SO SÁNH HÀNG NGANG ---
+    function generateComparisonTable() {
+        const selectedIds = Array.from(document.querySelectorAll('.compare-checkbox:checked')).map(cb => cb.value);
+        if (selectedIds.length === 0) return alert("Chọn ít nhất một kho!");
+
+        const head = document.getElementById('compare-grid-head');
+        const body = document.getElementById('compare-grid-body');
+        
+        // Tạo Header: Tên kho + Tổng DS
+        let headRow = '<tr>';
+        let bodyRow = '<tr>';
+
+        selectedIds.forEach(id => {
+            const w = warehouses.find(wh => wh.id === id);
+            const inR = dealers.filter(d => w.latlng.distanceTo(d.latlng) <= w.radius).sort((a,b) => b.ds - a.ds);
+            const sumDS = inR.reduce((a, b) => a + b.ds, 0);
+            
+            headRow += `<th>
+                <div style="font-size:14px;">${w.name}</div>
+                <div style="font-size:10px; opacity:0.9; margin-top:4px;">R: ${w.radius/1000}km | KH: ${inR.length}</div>
+                <div style="font-size:13px; color:#fff; background:rgba(0,0,0,0.2); padding:4px; border-radius:4px; margin-top:6px;">${sumDS.toLocaleString()}đ</div>
+            </th>`;
+
+            let custList = inR.map(d => `
+                <div class="cust-list-item">
+                    <span>${d.ten}</span>
+                    <b>${d.ds.toLocaleString()}đ</b>
+                </div>
+            `).join('');
+            
+            bodyRow += `<td><div style="max-height:500px; overflow-y:auto;">${custList || '<div style="padding:10px; color:#999; text-align:center;">Trống</div>'}</div></td>`;
+        });
+
+        headRow += '</tr>';
+        bodyRow += '</tr>';
+
+        head.innerHTML = headRow;
+        body.innerHTML = bodyRow;
+
+        document.getElementById('compare-modal').style.display = 'flex';
+        document.getElementById('modal-backdrop').style.display = 'block';
     }
 
+    // --- CẬP NHẬT: THAY % THÀNH DOANH SỐ THỰC ---
     function updateStats() {
         const compList = document.getElementById('company-warehouse-list');
         const userList = document.getElementById('user-warehouse-list');
@@ -236,43 +286,23 @@
                             <span style="cursor:pointer; color:var(--primary); font-size:18px; margin-left:8px;" onclick="toggleTable('${w.id}')">▾</span>
                         </div>
                     </div>
-                    <div style="font-size:11px; margin-top:4px;">Doanh số: <b style="color:#d63031">${sumDS.toLocaleString()}đ</b></div>
-                    <table class="dealer-table" id="tbl-${w.id}"><thead><tr><th>Tên KH</th><th>%</th><th>Km</th></tr></thead><tbody>
-                        ${inR.map(d => `<tr><td>${d.ten}</td><td style="color:var(--primary); font-weight:bold;">${sumDS>0?((d.ds/sumDS)*100).toFixed(1):0}%</td><td class="dist-cell" data-lat="${d.lat}" data-lng="${d.lng}">...</td></tr>`).join('') || '<tr><td colspan="3">Trống</td></tr>'}
-                    </tbody></table>
+                    <div style="font-size:11px; margin-top:4px;">Tổng Doanh số: <b style="color:#d63031">${sumDS.toLocaleString()}đ</b></div>
+                    <table class="dealer-table" id="tbl-${w.id}">
+                        <thead><tr><th>Tên Khách hàng</th><th>Doanh số thực (đ)</th><th>Km</th></tr></thead>
+                        <tbody>
+                            ${inR.map(d => `<tr><td>${d.ten}</td><td style="color:var(--blue); font-weight:bold;">${d.ds.toLocaleString()}đ</td><td class="dist-cell" data-lat="${d.lat}" data-lng="${d.lng}">...</td></tr>`).join('') || '<tr><td colspan="3">Trống</td></tr>'}
+                        </tbody>
+                    </table>
                 </div>`;
             if (w.isCompany) compList.innerHTML += html; else userList.innerHTML += html;
         });
     }
 
-    async function toggleTable(id) {
-        const tbl = document.getElementById(`tbl-${id}`); tbl.style.display = (tbl.style.display === "table") ? "none" : "table";
-        if (tbl.style.display === "table") {
-            const wh = warehouses.find(w => w.id === id); const cells = tbl.querySelectorAll('.dist-cell');
-            for (let cell of cells) if (cell.innerText === "...") {
-                const r = await fetch(`https://router.project-osrm.org/route/v1/driving/${wh.latlng.lng},${wh.latlng.lat};${cell.dataset.lng},${cell.dataset.lat}?overview=false`);
-                const d = await r.json(); cell.innerText = d.code === 'Ok' ? (d.routes[0].distance / 1000).toFixed(1) + "km" : "Err";
-            }
-        }
-    }
-
-    function startCompareSelection() {
-        const overlay = document.getElementById('selection-overlay'); const container = document.getElementById('selection-list-container');
-        overlay.style.display = 'block';
-        container.innerHTML = warehouses.map(w => `<div style="display:flex; align-items:center; margin-bottom:5px;"><input type="checkbox" class="compare-checkbox" value="${w.id}" id="chk-${w.id}"><label for="chk-${w.id}" style="margin-left:8px; font-size:12px;">${w.name}</label></div>`).join('');
-    }
+    // --- CÁC HÀM CƠ BẢN GIỮ NGUYÊN ---
+    function toggleGroup(id) { const el = document.getElementById(id); const ar = document.getElementById('arrow-'+id); if (el.style.display === "block") { el.style.display = "none"; ar.innerText = "◀"; } else { el.style.display = "block"; ar.innerText = "▼"; } }
+    async function toggleTable(id) { const tbl = document.getElementById(`tbl-${id}`); tbl.style.display = (tbl.style.display === "table") ? "none" : "table"; if (tbl.style.display === "table") { const wh = warehouses.find(w => w.id === id); const cells = tbl.querySelectorAll('.dist-cell'); for (let cell of cells) if (cell.innerText === "...") { const r = await fetch(`https://router.project-osrm.org/route/v1/driving/${wh.latlng.lng},${wh.latlng.lat};${cell.dataset.lng},${cell.dataset.lat}?overview=false`); const d = await r.json(); cell.innerText = d.code === 'Ok' ? (d.routes[0].distance / 1000).toFixed(1) + "km" : "Err"; } } }
+    function startCompareSelection() { const overlay = document.getElementById('selection-overlay'); const container = document.getElementById('selection-list-container'); overlay.style.display = 'block'; container.innerHTML = warehouses.map(w => `<div style="display:flex; align-items:center; margin-bottom:5px;"><input type="checkbox" class="compare-checkbox" value="${w.id}" id="chk-${w.id}"><label for="chk-${w.id}" style="margin-left:8px; font-size:12px; cursor:pointer;">${w.name}</label></div>`).join(''); }
     function cancelCompare() { document.getElementById('selection-overlay').style.display = 'none'; }
-    function generateComparisonTable() {
-        const selectedIds = Array.from(document.querySelectorAll('.compare-checkbox:checked')).map(cb => cb.value);
-        if (selectedIds.length === 0) return alert("Chọn ít nhất một kho!");
-        const body = document.getElementById('compare-result-body'); body.innerHTML = '';
-        selectedIds.forEach(id => {
-            const w = warehouses.find(wh => wh.id === id); const inR = dealers.filter(d => w.latlng.distanceTo(d.latlng) <= w.radius).sort((a,b) => b.ds - a.ds);
-            const sumDS = inR.reduce((a, b) => a + b.ds, 0);
-            body.innerHTML += `<tr><td style="font-weight:bold;">${w.name}</td><td style="text-align:center;">${inR.length}</td><td style="color:red; font-weight:bold;">${sumDS.toLocaleString()}đ</td><td><div style="max-height:100px; overflow-y:auto;">${inR.map(d => `<div>${d.ten}: <b>${d.ds.toLocaleString()}</b></div>`).join('')}</div></td></tr>`;
-        });
-        document.getElementById('compare-modal').style.display = 'flex'; document.getElementById('modal-backdrop').style.display = 'block';
-    }
     function closeCompareModal() { document.getElementById('compare-modal').style.display = 'none'; document.getElementById('modal-backdrop').style.display = 'none'; }
     function changeRadius(id, val) { const wh = warehouses.find(w => w.id === id); if (wh && val >= 0) { wh.radius = parseFloat(val) * 1000; wh.circle.setRadius(wh.radius); updateStats(); saveUserWarehouses(); } }
     function removeWarehouse(id) { if(confirm("Xóa?")) { const wh = warehouses.find(w => w.id === id); map.removeLayer(wh.marker); map.removeLayer(wh.circle); warehouses = warehouses.filter(w => w.id !== id); updateStats(); saveUserWarehouses(); } }
