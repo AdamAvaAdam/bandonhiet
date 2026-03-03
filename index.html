@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Điều phối V13.1 - Tọa độ & Thu gọn</title>
+    <title>Điều phối V13.2 - Lưu Log & Đặt tên</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root { --primary: #ff1744; --dark: #2d3436; --bg: #f8f9fa; --teal: #00b894; }
@@ -38,7 +38,6 @@
             #sidebar.hidden ~ #floating-toggle { left: 20px; }
         }
 
-        /* Group Header with Collapse Arrow */
         .section-header { 
             display: flex; justify-content: space-between; align-items: center;
             background: #f1f2f6; padding: 10px; border-radius: 8px;
@@ -63,7 +62,7 @@
 
 <div id="login-overlay">
     <div class="login-box">
-        <h2 style="color:var(--primary)">ĐIỀU PHỐI V13.1</h2>
+        <h2 style="color:var(--primary)">ĐIỀU PHỐI V13.2</h2>
         <input type="text" id="username" placeholder="User" value="admin">
         <input type="password" id="password" placeholder="Pass" value="HA5566">
         <button onclick="checkLogin()">VÀO HỆ THỐNG</button>
@@ -102,7 +101,7 @@
         </div>
 
         <div class="section-header" onclick="toggleGroup('user-group')">
-            <span class="section-title">📍 Kho cắm điều phối</span>
+            <span class="section-title">📍 Kho cắm điều phối (Đã lưu Log)</span>
             <span id="arrow-user-group" class="collapse-arrow">▼</span>
         </div>
         <div id="user-group" class="group-content">
@@ -152,28 +151,17 @@
     function toggleGroup(groupId) {
         const content = document.getElementById(groupId);
         const arrow = document.getElementById('arrow-' + groupId);
-        if (content.style.display === "none") {
-            content.style.display = "block";
-            arrow.innerText = "▼";
-        } else {
-            content.style.display = "none";
-            arrow.innerText = "◀";
-        }
+        if (content.style.display === "none") { content.style.display = "block"; arrow.innerText = "▼"; }
+        else { content.style.display = "none"; arrow.innerText = "◀"; }
     }
 
     const map = L.map('map', { zoomSnap: 0.1, zoomControl: false }).setView([20.8, 106.0], 9);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
-
     map.createPane('paneDealers');
     map.getPane('paneDealers').style.zIndex = 700;
 
     let dealers = [], warehouses = [], highlightLayer = L.layerGroup().addTo(map), 
         heatLayerGroup = L.layerGroup().addTo(map), dealerLayer = L.layerGroup().addTo(map), heatLayer = null;
-
-    function getRankColor(ds) {
-        if (ds <= 0) return '#b2bec3'; if (ds < 500000000) return '#00b894';
-        if (ds < 1000000000) return '#a29bfe'; if (ds < 2000000000) return '#fdcb6e'; return '#ff1744';
-    }
 
     async function loadDataOnline() {
         const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSqx48yei68qBJFSiHZzxCeGO0df4IDE6md9hzu7TUv5GjgOvU9yIpm4lEN6HJw9zJuek4YYMj8XAyn/pub?gid=0&single=true&output=csv";
@@ -186,7 +174,7 @@
                 let ds = parseFloat(col[5].toString().replace(/\./g, '').replace(/,/g, '')) || 0;
                 let lat = parseFloat(col[4].toString().replace(',', '.')), lng = parseFloat(col[3].toString().replace(',', '.'));
                 if (!isNaN(lat) && !isNaN(lng)) {
-                    const color = getRankColor(ds);
+                    const color = ds <= 0 ? '#b2bec3' : (ds < 500000000 ? '#00b894' : (ds < 1000000000 ? '#a29bfe' : (ds < 2000000000 ? '#fdcb6e' : '#ff1744')));
                     const m = L.circleMarker([lat, lng], { radius: ds > 0 ? 5 : 3, color: color, weight: 1, fillOpacity: 0.9, fillColor: color, pane: 'paneDealers' });
                     m.bindTooltip(`<b>${col[1]}</b><br>${ds.toLocaleString()}đ`, { sticky: true });
                     dealers.push({ latlng: L.latLng(lat, lng), ds, ten: col[1], lat, lng });
@@ -202,18 +190,19 @@
 
     function initWarehouses() {
         COMPANY_WAREHOUSES_DATA.forEach(w => addWarehouse(L.latLng(w.lat, w.lng), 5, w.name, true));
-        const saved = JSON.parse(localStorage.getItem('savedWarehouses') || "[]");
+        const saved = JSON.parse(localStorage.getItem('savedWarehousesLog') || "[]");
         saved.forEach(d => addWarehouse(L.latLng(d.lat, d.lng), d.radius, d.name, false));
     }
 
     map.on('click', e => {
         if (document.getElementById('pinToggle').value === 'on') {
-            addWarehouse(e.latlng, 5, "Kho mới " + (warehouses.length + 1), false);
+            const customName = prompt("Nhập tên kho điều phối này:", "Kho cắm " + (warehouses.filter(w=>!w.isCompany).length + 1));
+            if (customName) addWarehouse(e.latlng, 5, customName, false);
         }
     });
 
     function addWarehouse(latlng, radiusKm, name, isCompany = false) {
-        const id = isCompany ? ("comp-" + name.replace(/\s/g, '')) : ("user-" + Date.now());
+        const id = isCompany ? ("comp-" + name) : ("user-" + Date.now() + Math.random());
         const rM = radiusKm * 1000;
         const color = isCompany ? '#2d3436' : '#ff1744';
 
@@ -227,6 +216,7 @@
         m.on('dragend', () => { wh.latlng = m.getLatLng(); c.setLatLng(wh.latlng); updateStats(); saveUserWarehouses(); });
         warehouses.push(wh);
         updateStats();
+        if(!isCompany) saveUserWarehouses();
     }
 
     function addWarehouseByCoords() {
@@ -234,12 +224,13 @@
         const parts = input.split(/[, ]+/);
         if (parts.length < 2) return alert("Định dạng: Lat, Lng");
         const lat = parseFloat(parts[0]), lng = parseFloat(parts[1]);
-        if (isNaN(lat) || isNaN(lng)) return alert("Tọa độ sai");
-        const latlng = L.latLng(lat, lng);
-        addWarehouse(latlng, 5, "Kho tọa độ " + (warehouses.length + 1), false);
-        map.setView(latlng, 12);
-        document.getElementById('coordInput').value = "";
-        saveUserWarehouses();
+        const customName = prompt("Nhập tên kho cho tọa độ này:", "Kho tọa độ " + (warehouses.filter(w=>!w.isCompany).length + 1));
+        if (customName) {
+            const latlng = L.latLng(lat, lng);
+            addWarehouse(latlng, 5, customName, false);
+            map.setView(latlng, 12);
+            document.getElementById('coordInput').value = "";
+        }
     }
 
     function changeRadius(id, value) {
@@ -252,7 +243,7 @@
     }
 
     function removeWarehouse(id) {
-        if(confirm("Xóa kho này?")) {
+        if(confirm("Xóa kho này khỏi Log?")) {
             const wh = warehouses.find(w => w.id === id);
             map.removeLayer(wh.marker); map.removeLayer(wh.circle);
             warehouses = warehouses.filter(w => w.id !== id);
@@ -268,8 +259,7 @@
             const inR = dealers.filter(d => w.latlng.distanceTo(d.latlng) <= w.radius).sort((a,b) => b.ds - a.ds);
             const sumDS = inR.reduce((a, b) => a + b.ds, 0);
             let rows = inR.map(d => `<tr><td>${d.ten}</td><td style="color:var(--primary); font-weight:bold;">${sumDS > 0 ? ((d.ds/sumDS)*100).toFixed(1) : 0}%</td><td class="dist-cell" data-lat="${d.lat}" data-lng="${d.lng}">...</td></tr>`).join('');
-            const html = `
-                <div class="stats-box" style="border-left-color: ${w.isCompany ? '#2d3436' : '#ff1744'}">
+            const html = `<div class="stats-box" style="border-left-color: ${w.isCompany ? '#2d3436' : '#ff1744'}">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <span style="font-weight:bold; font-size:12px;">${w.name}</span>
                         <div style="display:flex; align-items:center;">
@@ -301,7 +291,7 @@
 
     function saveUserWarehouses() {
         const data = warehouses.filter(w => !w.isCompany).map(w => ({ lat: w.latlng.lat, lng: w.latlng.lng, radius: w.radius/1000, name: w.name }));
-        localStorage.setItem('savedWarehouses', JSON.stringify(data));
+        localStorage.setItem('savedWarehousesLog', JSON.stringify(data));
     }
 
     async function searchArea() {
