@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Điều phối V13.8 - Đối chiếu Trực diện</title>
+    <title>Điều phối V13.9 - Fix Click & Đối chiếu</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root { --primary: #ff1744; --dark: #2d3436; --bg: #f8f9fa; --teal: #00b894; --warning: #f1c40f; --blue: #0984e3; }
@@ -50,7 +50,6 @@
         .dealer-table th { text-align: left; border-bottom: 1px solid #eee; padding: 4px; }
         .dealer-table td { padding: 6px 4px; border-top: 1px solid #f9f9f9; }
 
-        /* MODAL SO SÁNH DẠNG CỘT */
         #compare-modal { 
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
             width: 95%; max-width: 1100px; max-height: 85vh; background: white;
@@ -73,7 +72,7 @@
 
 <div id="login-overlay">
     <div class="login-box">
-        <h2 style="color:var(--primary)">ĐIỀU PHỐI V13.8</h2>
+        <h2 style="color:var(--primary)">ĐIỀU PHỐI V13.9</h2>
         <input type="text" id="username" placeholder="User" value="admin">
         <input type="password" id="password" placeholder="Pass" value="HA5566">
         <button onclick="checkLogin()">VÀO HỆ THỐNG</button>
@@ -174,6 +173,16 @@
     let dealers = [], warehouses = [], highlightLayer = L.layerGroup().addTo(map), 
         heatLayerGroup = L.layerGroup().addTo(map), dealerLayer = L.layerGroup().addTo(map), heatLayer = null;
 
+    // --- FIX: TRÌNH LẮNG NGHE SỰ KIỆN CLICK BẢN ĐỒ ---
+    map.on('click', function(e) {
+        if (document.getElementById('pinToggle').value === 'on') {
+            const customName = prompt("Nhập tên kho điều phối này:", "Kho cắm " + (warehouses.filter(w=>!w.isCompany).length + 1));
+            if (customName) {
+                addWarehouse(e.latlng, 5, customName, false);
+            }
+        }
+    });
+
     function getGlowStyle(ds) {
         if (ds <= 0) return { color: 'rgba(100, 100, 100, 0.3)', radius: 3, glowRadius: 0 };
         if (ds < 200000000) return { color: '#7f8c8d', radius: 4, glowRadius: 8 };
@@ -225,50 +234,27 @@
         warehouses.push(wh); updateStats(); if(!isCompany) saveUserWarehouses();
     }
 
-    // --- CẢI TIẾN: SO SÁNH HÀNG NGANG ---
+    // --- SO SÁNH HÀNG NGANG ---
     function generateComparisonTable() {
         const selectedIds = Array.from(document.querySelectorAll('.compare-checkbox:checked')).map(cb => cb.value);
         if (selectedIds.length === 0) return alert("Chọn ít nhất một kho!");
-
         const head = document.getElementById('compare-grid-head');
         const body = document.getElementById('compare-grid-body');
-        
-        // Tạo Header: Tên kho + Tổng DS
-        let headRow = '<tr>';
-        let bodyRow = '<tr>';
-
+        let headRow = '<tr>'; let bodyRow = '<tr>';
         selectedIds.forEach(id => {
             const w = warehouses.find(wh => wh.id === id);
             const inR = dealers.filter(d => w.latlng.distanceTo(d.latlng) <= w.radius).sort((a,b) => b.ds - a.ds);
             const sumDS = inR.reduce((a, b) => a + b.ds, 0);
-            
-            headRow += `<th>
-                <div style="font-size:14px;">${w.name}</div>
-                <div style="font-size:10px; opacity:0.9; margin-top:4px;">R: ${w.radius/1000}km | KH: ${inR.length}</div>
-                <div style="font-size:13px; color:#fff; background:rgba(0,0,0,0.2); padding:4px; border-radius:4px; margin-top:6px;">${sumDS.toLocaleString()}đ</div>
-            </th>`;
-
-            let custList = inR.map(d => `
-                <div class="cust-list-item">
-                    <span>${d.ten}</span>
-                    <b>${d.ds.toLocaleString()}đ</b>
-                </div>
-            `).join('');
-            
+            headRow += `<th><div style="font-size:14px;">${w.name}</div><div style="font-size:10px; opacity:0.9; margin-top:4px;">R: ${w.radius/1000}km | KH: ${inR.length}</div><div style="font-size:13px; color:#fff; background:rgba(0,0,0,0.2); padding:4px; border-radius:4px; margin-top:6px;">${sumDS.toLocaleString()}đ</div></th>`;
+            let custList = inR.map(d => `<div class="cust-list-item"><span>${d.ten}</span><b>${d.ds.toLocaleString()}đ</b></div>`).join('');
             bodyRow += `<td><div style="max-height:500px; overflow-y:auto;">${custList || '<div style="padding:10px; color:#999; text-align:center;">Trống</div>'}</div></td>`;
         });
-
-        headRow += '</tr>';
-        bodyRow += '</tr>';
-
-        head.innerHTML = headRow;
-        body.innerHTML = bodyRow;
-
-        document.getElementById('compare-modal').style.display = 'flex';
-        document.getElementById('modal-backdrop').style.display = 'block';
+        headRow += '</tr>'; bodyRow += '</tr>';
+        head.innerHTML = headRow; body.innerHTML = bodyRow;
+        document.getElementById('compare-modal').style.display = 'flex'; document.getElementById('modal-backdrop').style.display = 'block';
     }
 
-    // --- CẬP NHẬT: THAY % THÀNH DOANH SỐ THỰC ---
+    // --- CẬP NHẬT DOANH SỐ THỰC ---
     function updateStats() {
         const compList = document.getElementById('company-warehouse-list');
         const userList = document.getElementById('user-warehouse-list');
@@ -298,7 +284,6 @@
         });
     }
 
-    // --- CÁC HÀM CƠ BẢN GIỮ NGUYÊN ---
     function toggleGroup(id) { const el = document.getElementById(id); const ar = document.getElementById('arrow-'+id); if (el.style.display === "block") { el.style.display = "none"; ar.innerText = "◀"; } else { el.style.display = "block"; ar.innerText = "▼"; } }
     async function toggleTable(id) { const tbl = document.getElementById(`tbl-${id}`); tbl.style.display = (tbl.style.display === "table") ? "none" : "table"; if (tbl.style.display === "table") { const wh = warehouses.find(w => w.id === id); const cells = tbl.querySelectorAll('.dist-cell'); for (let cell of cells) if (cell.innerText === "...") { const r = await fetch(`https://router.project-osrm.org/route/v1/driving/${wh.latlng.lng},${wh.latlng.lat};${cell.dataset.lng},${cell.dataset.lat}?overview=false`); const d = await r.json(); cell.innerText = d.code === 'Ok' ? (d.routes[0].distance / 1000).toFixed(1) + "km" : "Err"; } } }
     function startCompareSelection() { const overlay = document.getElementById('selection-overlay'); const container = document.getElementById('selection-list-container'); overlay.style.display = 'block'; container.innerHTML = warehouses.map(w => `<div style="display:flex; align-items:center; margin-bottom:5px;"><input type="checkbox" class="compare-checkbox" value="${w.id}" id="chk-${w.id}"><label for="chk-${w.id}" style="margin-left:8px; font-size:12px; cursor:pointer;">${w.name}</label></div>`).join(''); }
